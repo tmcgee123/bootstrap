@@ -15,6 +15,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
     placement: 'top',
     animation: true,
     popupDelay: 0,
+    popupCloseDelay: 500,
     useContentExp: false
   };
 
@@ -215,7 +216,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
               if (isOpenExp) {
                 isOpenExp.assign(ttScope.origScope, ttScope.isOpen);
               }
-              
+
               if (!$rootScope.$$phase) {
                 ttScope.$apply(); // digest required as $apply is not called
               }
@@ -232,7 +233,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
               if (isOpenExp) {
                 isOpenExp.assign(ttScope.origScope, ttScope.isOpen);
               }
-              
+
               //if tooltip is going to be shown after delay, we must cancel this
               $timeout.cancel(popupTimeout);
               popupTimeout = null;
@@ -242,7 +243,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
               // FIXME: this is a placeholder for a port of the transitions library.
               if (ttScope.animation) {
                 if (!transitionTimeout) {
-                  transitionTimeout = $timeout(removeTooltip, 500);
+                  transitionTimeout = $timeout(removeTooltip, ttScope.popupCloseDelay);
                 }
               } else {
                 removeTooltip();
@@ -269,7 +270,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
                     hide();
                   }
                 });
-                
+
                 tooltipLinkedScope.$watch(function() {
                   if (!repositionScheduled) {
                     repositionScheduled = true;
@@ -281,7 +282,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
                     });
                   }
                 });
-                
+
               }
             }
 
@@ -301,6 +302,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
               prepPopupClass();
               prepPlacement();
               prepPopupDelay();
+              prepPopupCloseDelay();
             }
 
             ttScope.contentExp = function() {
@@ -345,7 +347,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
                 }, 0, false);
               }
             });
-            
+
             if (isOpenExp) {
               scope.$watch(isOpenExp, function(val) {
                 if (val !== ttScope.isOpen) {
@@ -367,6 +369,12 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
               var val = attrs[prefix + 'PopupDelay'];
               var delay = parseInt(val, 10);
               ttScope.popupDelay = !isNaN(delay) ? delay : options.popupDelay;
+            }
+
+            function prepPopupCloseDelay() {
+              var val = attrs[prefix + 'PopupCloseDelay'];
+              var delay = parseInt(val, 10);
+              ttScope.popupCloseDelay = !isNaN(delay) ? delay : options.popupCloseDelay;
             }
 
             var unregisterTriggers = function() {

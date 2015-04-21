@@ -256,9 +256,10 @@ describe('tooltip', function() {
       scope.$digest();
     }));
 
-    it('should open after timeout', inject(function($timeout) {
+    it('should open after timeout and set the close delay to the default', inject(function ($timeout) {
       elm.trigger('mouseenter');
       expect(tooltipScope.isOpen).toBe(false);
+      expect(tooltipScope.popupCloseDelay).toBe(500);
 
       $timeout.flush();
       expect(tooltipScope.isOpen).toBe(true);
@@ -293,7 +294,7 @@ describe('tooltip', function() {
       expect(tooltipScope.isOpen).toBe(false);
     }));
   });
-  
+
   describe( 'with an is-open attribute', function() {
     beforeEach(inject(function ($compile) {
       scope.isOpen = false;
@@ -304,7 +305,7 @@ describe('tooltip', function() {
       tooltipScope = elmScope.$$childTail;
       scope.$digest();
     }));
-    
+
     it( 'should show and hide with the controller value', function() {
       expect(tooltipScope.isOpen).toBe(false);
       elmScope.isOpen = true;
@@ -314,13 +315,59 @@ describe('tooltip', function() {
       elmScope.$digest();
       expect(tooltipScope.isOpen).toBe(false);
     });
-    
+
     it( 'should update the controller value', function() {
       elm.trigger('mouseenter');
       expect(elmScope.isOpen).toBe(true);
       elm.trigger('mouseleave');
       expect(elmScope.isOpen).toBe(false);
     });
+  });
+
+  describe('with specified popup close delay', function () {
+
+    beforeEach(inject(function ($compile) {
+      scope.delay='1000';
+      elm = $compile(angular.element(
+        '<span tooltip="tooltip text" tooltip-popup-delay="1000"' +
+        'tooltip-popup-close-delay="{{delay}}">Selector Text</span>'
+      ))(scope);
+      elmScope = elm.scope();
+      tooltipScope = elmScope.$$childTail;
+      scope.$digest();
+    }));
+
+    it('should open after timeout and close after the close delay timeout', inject(function ($timeout) {
+
+      elm.trigger('mouseenter');
+      expect(tooltipScope.isOpen).toBe(false);
+
+      $timeout.flush();
+      expect(tooltipScope.isOpen).toBe(true);
+      expect(tooltipScope.popupCloseDelay).toBe(1000);
+      elm.trigger('mouseleave');
+      $timeout.flush();
+      expect(tooltipScope.isOpen).toBe(false);
+
+    }));
+
+    it('should not open if mouseleave before timeout', inject(function ($timeout) {
+      elm.trigger('mouseenter');
+      expect(tooltipScope.isOpen).toBe(false);
+
+      elm.trigger('mouseleave');
+      $timeout.flush();
+      expect(tooltipScope.isOpen).toBe(false);
+    }));
+
+    it('should use default popup delay if specified delay is not a number', inject(function($timeout){
+      scope.delay='text1000';
+      scope.$digest();
+      elm.trigger('mouseenter');
+      $timeout.flush();
+      expect(tooltipScope.isOpen).toBe(true);
+    }));
+
   });
 
   describe( 'with a trigger attribute', function() {
@@ -412,7 +459,7 @@ describe('tooltip', function() {
       elm.trigger('fakeTriggerAttr');
       expect( tooltipScope.isOpen ).toBeFalsy();
     }));
-    
+
     it( 'should not show when trigger is set to "none"', inject(function($compile) {
       elmBody = angular.element(
         '<div><input tooltip="Hello!" tooltip-trigger="none" /></div>'
