@@ -249,10 +249,11 @@ describe('tooltip', function() {
       scope.$digest();
     }));
 
-    it('should open after timeout', inject(function ($timeout) {
+    it('should open after timeout and set the close delay to the default', inject(function ($timeout) {
 
       elm.trigger('mouseenter');
       expect(tooltipScope.isOpen).toBe(false);
+      expect(tooltipScope.popupCloseDelay).toBe(500);
 
       $timeout.flush();
       expect(tooltipScope.isOpen).toBe(true);
@@ -274,6 +275,52 @@ describe('tooltip', function() {
       elm.trigger('mouseenter');
       expect(tooltipScope.isOpen).toBe(true);
     });
+
+  });
+
+  describe('with specified popup close delay', function () {
+
+    beforeEach(inject(function ($compile) {
+      scope.delay='1000';
+      elm = $compile(angular.element(
+        '<span tooltip="tooltip text" tooltip-popup-delay="1000"' +
+        'tooltip-popup-close-delay="{{delay}}">Selector Text</span>'
+      ))(scope);
+      elmScope = elm.scope();
+      tooltipScope = elmScope.$$childTail;
+      scope.$digest();
+    }));
+
+    it('should open after timeout and close after the close delay timeout', inject(function ($timeout) {
+
+      elm.trigger('mouseenter');
+      expect(tooltipScope.isOpen).toBe(false);
+
+      $timeout.flush();
+      expect(tooltipScope.isOpen).toBe(true);
+      expect(tooltipScope.popupCloseDelay).toBe(1000);
+      elm.trigger('mouseleave');
+      $timeout.flush();
+      expect(tooltipScope.isOpen).toBe(false);
+
+    }));
+
+    it('should not open if mouseleave before timeout', inject(function ($timeout) {
+      elm.trigger('mouseenter');
+      expect(tooltipScope.isOpen).toBe(false);
+
+      elm.trigger('mouseleave');
+      $timeout.flush();
+      expect(tooltipScope.isOpen).toBe(false);
+    }));
+
+    it('should use default popup delay if specified delay is not a number', inject(function($timeout){
+      scope.delay='text1000';
+      scope.$digest();
+      elm.trigger('mouseenter');
+      $timeout.flush();
+      expect(tooltipScope.isOpen).toBe(true);
+    }));
 
   });
 
@@ -797,4 +844,3 @@ describe( '$tooltipProvider', function() {
     });
   });
 });
-

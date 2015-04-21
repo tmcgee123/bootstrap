@@ -14,7 +14,8 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
   var defaultOptions = {
     placement: 'top',
     animation: true,
-    popupDelay: 0
+    popupDelay: 0,
+    popupCloseDelay: 500
   };
 
   // Default hide triggers for each show trigger
@@ -223,7 +224,7 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
               // FIXME: this is a placeholder for a port of the transitions library.
               if ( ttScope.animation ) {
                 if (!transitionTimeout) {
-                  transitionTimeout = $timeout(removeTooltip, 500);
+                  transitionTimeout = $timeout(removeTooltip, ttScope.popupCloseDelay);
                 }
               } else {
                 removeTooltip();
@@ -265,6 +266,7 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
               prepPopupClass();
               prepPlacement();
               prepPopupDelay();
+              prepPopupCloseDelay();
             }
 
             ttScope.contentExp = function () {
@@ -305,6 +307,12 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
               var val = attrs[ prefix + 'PopupDelay' ];
               var delay = parseInt( val, 10 );
               ttScope.popupDelay = ! isNaN(delay) ? delay : options.popupDelay;
+            }
+
+            function prepPopupCloseDelay() {
+              var val = attrs[ prefix + 'PopupCloseDelay' ];
+              var delay = parseInt( val, 10 );
+              ttScope.popupCloseDelay = ! isNaN(delay) ? delay : options.popupCloseDelay;
             }
 
             var unregisterTriggers = function () {
