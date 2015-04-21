@@ -266,13 +266,14 @@ describe('tooltip', function() {
       scope.$digest();
     }));
 
-    it('should open after timeout', function() {
+    it('should open after timeout and set the close delay to the default', inject(function ($timeout) {
       trigger(elm, 'mouseenter');
       expect(tooltipScope.isOpen).toBe(false);
+      expect(tooltipScope.popupCloseDelay).toBe(500);
 
       $timeout.flush();
       expect(tooltipScope.isOpen).toBe(true);
-    });
+    }));
 
     it('should not open if mouseleave before timeout', function() {
       trigger(elm, 'mouseenter');
@@ -509,7 +510,7 @@ describe('tooltip', function() {
       elmScope = elm.scope();
       tooltipScope = elmScope.$$childTail;
       expect(tooltipScope.isOpen).toBeFalsy();
-      elm.trigger('mouseenter');
+      trigger(elm, 'mouseenter');
       expect(tooltipScope.isOpen).toBeFalsy();
     }));
   });
