@@ -15,7 +15,8 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
     placement: 'top',
     animation: true,
     popupDelay: 0,
-    popupCloseDelay: 500
+    popupCloseDelay: 500,
+    useContentExp: false
   };
 
   // Default hide triggers for each show trigger
@@ -66,8 +67,8 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
    * TODO support multiple triggers
    */
   this.$get = [ '$window', '$compile', '$timeout', '$document', '$position', '$interpolate', function ( $window, $compile, $timeout, $document, $position, $interpolate ) {
-    return function $tooltip ( type, prefix, defaultTriggerShow ) {
-      var options = angular.extend( {}, defaultOptions, globalOptions );
+    return function $tooltip ( type, prefix, defaultTriggerShow, options ) {
+      options = angular.extend( {}, defaultOptions, globalOptions, options );
 
       /**
        * Returns an object of show and hide triggers.
@@ -99,8 +100,9 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
       var template =
         '<div '+ directiveName +'-popup '+
           'title="'+startSym+'title'+endSym+'" '+
-          'content="'+startSym+'content'+endSym+'" '+
-          'content-exp="contentExp()" '+
+          (options.useContentExp ?
+            'content-exp="contentExp()" ' :
+            'content="'+startSym+'content'+endSym+'" ') +
           'placement="'+startSym+'placement'+endSym+'" '+
           'popup-class="'+startSym+'popupClass'+endSym+'" '+
           'animation="animation" '+
@@ -189,7 +191,7 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
               }
 
               // Don't show empty tooltips.
-              if ( ! ttScope.content ) {
+              if ( !(options.useContentExp ? ttScope.contentExp() : ttScope.content) ) {
                 return angular.noop;
               }
 
@@ -248,6 +250,14 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
               tooltipLinkedScope.$watch(function () {
                 $timeout(positionTooltip, 0, false);
               });
+
+              if (options.useContentExp) {
+                tooltipLinkedScope.$watch('contentExp()', function (val) {
+                  if (!val && ttScope.isOpen ) {
+                    hide();
+                  }
+                });
+              }
             }
 
             function removeTooltip() {
@@ -276,13 +286,15 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
             /**
              * Observe the relevant attributes.
              */
-            attrs.$observe( type, function ( val ) {
-              ttScope.content = val;
+            if (!options.useContentExp) {
+              attrs.$observe( type, function ( val ) {
+                ttScope.content = val;
 
-              if (!val && ttScope.isOpen ) {
-                hide();
-              }
-            });
+                if (!val && ttScope.isOpen ) {
+                  hide();
+                }
+              });
+            }
 
             attrs.$observe( 'disabled', function ( val ) {
               if (val && ttScope.isOpen ) {
@@ -474,14 +486,16 @@ function ($animate ,  $sce ,  $compile ,  $templateRequest) {
   return {
     restrict: 'EA',
     replace: true,
-    scope: { title: '@', content: '@', placement: '@', animation: '&', isOpen: '&',
+    scope: { contentExp: '&', placement: '@', popupClass: '@', animation: '&', isOpen: '&',
       originScope: '&' },
     templateUrl: 'template/tooltip/tooltip-template-popup.html'
   };
 })
 
 .directive( 'tooltipTemplate', [ '$tooltip', function ( $tooltip ) {
-  return $tooltip( 'tooltipTemplate', 'tooltip', 'mouseenter' );
+  return $tooltip('tooltipTemplate', 'tooltip', 'mouseenter', {
+    useContentExp: true
+  });
 }])
 
 .directive( 'tooltipHtmlPopup', function () {
@@ -494,7 +508,9 @@ function ($animate ,  $sce ,  $compile ,  $templateRequest) {
 })
 
 .directive( 'tooltipHtml', [ '$tooltip', function ( $tooltip ) {
-  return $tooltip( 'tooltipHtml', 'tooltip', 'mouseenter' );
+  return $tooltip('tooltipHtml', 'tooltip', 'mouseenter', {
+    useContentExp: true
+  });
 }])
 
 /*
