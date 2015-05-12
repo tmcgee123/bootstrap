@@ -75,10 +75,8 @@ describe('tooltip template', function() {
     scope.templateUrl = '';
     scope.$digest();
 
-    expect(tooltipScope.isOpen).toBe(false);
-
     $timeout.flush();
+    expect(tooltipScope.isOpen).toBe(false);
     expect(elmBody.children().length).toBe(1);
   }));
 });
-

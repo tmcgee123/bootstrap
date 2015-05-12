@@ -417,7 +417,7 @@ describe('tooltip', function() {
       scope = $rootScope;
     }));
 
-    it('should use it to show but set the hide trigger based on the map for mapped triggers', inject(function($compile) {
+    it('should use it to show but set the hide trigger based on the map for mapped triggers', inject(function($compile, $timeout) {
       elmBody = angular.element(
         '<div><input tooltip="Hello!" tooltip-trigger="focus" /></div>'
       );
@@ -431,10 +431,11 @@ describe('tooltip', function() {
       trigger(elm, 'focus');
       expect(tooltipScope.isOpen).toBeTruthy();
       trigger(elm, 'blur');
+      $timeout.flush();
       expect(tooltipScope.isOpen).toBeFalsy();
     }));
 
-    it('should use it as both the show and hide triggers for unmapped triggers', inject(function($compile) {
+    it('should use it as both the show and hide triggers for unmapped triggers', inject(function($compile, $timeout) {
       elmBody = angular.element(
         '<div><input tooltip="Hello!" tooltip-trigger="fakeTriggerAttr" /></div>'
       );
@@ -448,6 +449,7 @@ describe('tooltip', function() {
       trigger(elm, 'fakeTriggerAttr');
       expect(tooltipScope.isOpen).toBeTruthy();
       trigger(elm, 'fakeTriggerAttr');
+      $timeout.flush();
       expect(tooltipScope.isOpen).toBeFalsy();
     }));
 
@@ -811,7 +813,7 @@ describe('$tooltipProvider', function() {
       expect($body.children().length).toEqual(bodyLength + 1);
     }));
 
-    it('should close on location change', inject(function($rootScope, $compile) {
+    it('should close on location change', inject(function($rootScope, $compile, $timeout) {
       elmBody = angular.element(
         '<div><span tooltip="tooltip text">Selector Text</span></div>'
       );
@@ -828,6 +830,7 @@ describe('$tooltipProvider', function() {
 
       scope.$broadcast('$locationChangeSuccess');
       scope.$digest();
+      $timeout.flush();
       expect(tooltipScope.isOpen).toBe(false);
     }));
   });
@@ -841,7 +844,7 @@ describe('$tooltipProvider', function() {
       // load the template
       beforeEach(module('template/tooltip/tooltip-popup.html'));
 
-      it('should use the show trigger and the mapped value for the hide trigger', inject(function($rootScope, $compile) {
+      it('should use the show trigger and the mapped value for the hide trigger', inject(function($rootScope, $compile, $timeout) {
         elmBody = angular.element(
           '<div><input tooltip="tooltip text" /></div>'
         );
@@ -857,10 +860,11 @@ describe('$tooltipProvider', function() {
         trigger(elm, 'focus');
         expect(tooltipScope.isOpen).toBeTruthy();
         trigger(elm, 'blur');
+        $timeout.flush();
         expect(tooltipScope.isOpen).toBeFalsy();
       }));
 
-      it('should override the show and hide triggers if there is an attribute', inject(function($rootScope, $compile) {
+      it('should override the show and hide triggers if there is an attribute', inject(function($rootScope, $compile, $timeout) {
         elmBody = angular.element(
           '<div><input tooltip="tooltip text" tooltip-trigger="mouseenter"/></div>'
         );
@@ -871,11 +875,12 @@ describe('$tooltipProvider', function() {
         elm = elmBody.find('input');
         elmScope = elm.scope();
         tooltipScope = elmScope.$$childTail;
-
         expect(tooltipScope.isOpen).toBeFalsy();
+
         trigger(elm, 'mouseenter');
         expect(tooltipScope.isOpen).toBeTruthy();
         trigger(elm, 'mouseleave');
+        $timeout.flush();
         expect(tooltipScope.isOpen).toBeFalsy();
       }));
     });
@@ -889,7 +894,7 @@ describe('$tooltipProvider', function() {
       // load the template
       beforeEach(module('template/tooltip/tooltip-popup.html'));
 
-      it('should use the show trigger and the mapped value for the hide trigger', inject(function($rootScope, $compile) {
+      it('should use the show trigger and the mapped value for the hide trigger', inject(function($rootScope, $compile, $timeout) {
         elmBody = angular.element(
           '<div><input tooltip="tooltip text" /></div>'
         );
@@ -909,6 +914,7 @@ describe('$tooltipProvider', function() {
         trigger(elm, 'customOpenTrigger');
         expect(tooltipScope.isOpen).toBeTruthy();
         trigger(elm, 'bar');
+        $timeout.flush();
         expect(tooltipScope.isOpen).toBeFalsy();
       }));
     });
@@ -921,7 +927,7 @@ describe('$tooltipProvider', function() {
       // load the template
       beforeEach(module('template/tooltip/tooltip-popup.html'));
 
-      it('should use the show trigger to hide', inject(function($rootScope, $compile) {
+      it('should use the show trigger to hide', inject(function($rootScope, $compile, $timeout) {
         elmBody = angular.element(
           '<div><span tooltip="tooltip text">Selector Text</span></div>'
         );
@@ -937,6 +943,7 @@ describe('$tooltipProvider', function() {
         trigger(elm, 'fakeTrigger');
         expect(tooltipScope.isOpen).toBeTruthy();
         trigger(elm, 'fakeTrigger');
+        $timeout.flush();
         expect(tooltipScope.isOpen).toBeFalsy();
       }));
     });
