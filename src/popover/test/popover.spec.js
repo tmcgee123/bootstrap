@@ -41,9 +41,10 @@ describe('popover', function() {
     expect( elmBody.children().length ).toBe( 2 );
   }));
 
-  it('should close on second click', inject(function() {
+  it('should close on second click', inject(function($timeout) {
     elm.trigger( 'click' );
     elm.trigger( 'click' );
+    $timeout.flush();
     expect( tooltipScope.isOpen ).toBe( false );
   }));
 
@@ -141,5 +142,3 @@ describe('popover', function() {
   });
 
 });
-
-

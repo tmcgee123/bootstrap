@@ -69,11 +69,10 @@ describe('tooltip template', function() {
     scope.templateUrl = '';
     scope.$digest();
 
+    $timeout.flush();
     expect( tooltipScope.isOpen ).toBe( false );
 
-    $timeout.flush();
     expect( elmBody.children().length ).toBe( 1 );
   }));
 
 });
-
