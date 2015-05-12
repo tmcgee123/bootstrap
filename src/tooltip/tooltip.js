@@ -287,6 +287,9 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
             }
 
             function removeTooltip() {
+              // First things first: we don't show it anymore.
+              ttScope.isOpen = false;
+
               transitionTimeout = null;
               if (tooltip) {
                 tooltip.remove();
