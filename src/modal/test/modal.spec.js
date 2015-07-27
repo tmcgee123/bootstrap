@@ -1,5 +1,5 @@
 describe('$modal', function () {
-  var $controllerProvider, $rootScope, $document, $compile, $templateCache, $timeout, $q;
+  var $animate, $controllerProvider, $rootScope, $document, $compile, $templateCache, $timeout, $q;
   var $modal, $modalProvider;
 
   var triggerKeyDown = function (element, keyCode) {
@@ -8,6 +8,7 @@ describe('$modal', function () {
     element.trigger(e);
   };
 
+  beforeEach(module('ngAnimateMock'));
   beforeEach(module('ui.bootstrap.modal'));
   beforeEach(module('template/modal/backdrop.html'));
   beforeEach(module('template/modal/window.html'));
@@ -16,7 +17,8 @@ describe('$modal', function () {
     $modalProvider = _$modalProvider_;
   }));
 
-  beforeEach(inject(function (_$rootScope_, _$document_, _$compile_, _$templateCache_, _$timeout_, _$q_, _$modal_) {
+  beforeEach(inject(function (_$animate_, _$rootScope_, _$document_, _$compile_, _$templateCache_, _$timeout_, _$q_, _$modal_) {
+    $animate = _$animate_;
     $rootScope = _$rootScope_;
     $document = _$document_;
     $compile = _$compile_;
@@ -142,24 +144,25 @@ describe('$modal', function () {
   function open(modalOptions) {
     var modal = $modal.open(modalOptions);
     $rootScope.$digest();
+    $timeout.flush(0);
     return modal;
   }
 
   function close(modal, result, noFlush) {
     var closed = modal.close(result);
-    if (!noFlush) {
-      $timeout.flush();
-    }
     $rootScope.$digest();
+    if (!noFlush) {
+      $animate.triggerCallbacks();
+    }
     return closed;
   }
 
   function dismiss(modal, reason, noFlush) {
     var closed = modal.dismiss(reason);
-    if (!noFlush) {
-      $timeout.flush();
-    }
     $rootScope.$digest();
+    if (!noFlush) {
+      $animate.triggerCallbacks();
+    }
     return closed;
   }
 
@@ -174,6 +177,7 @@ describe('$modal', function () {
       expect($document).toHaveBackdrop();
 
       dismiss(modal, 'closing in test');
+      $animate.triggerCallbacks();
 
       expect($document).toHaveModalsOpen(0);
 
@@ -220,6 +224,7 @@ describe('$modal', function () {
       expect($document).toHaveBackdrop();
 
       dismiss(modal, 'closing in test');
+      $animate.triggerCallbacks();
 
       expect($document).toHaveModalsOpen(0);
 
@@ -232,7 +237,7 @@ describe('$modal', function () {
       expect($document).toHaveModalsOpen(1);
 
       triggerKeyDown($document, 27);
-      $timeout.flush();
+      $animate.triggerCallbacks();
       $rootScope.$digest();
 
       expect($document).toHaveModalsOpen(0);
@@ -244,13 +249,13 @@ describe('$modal', function () {
       expect($document).toHaveModalsOpen(1);
 
       $document.find('body > div.modal').click();
-      $timeout.flush();
+      $animate.triggerCallbacks();
       $rootScope.$digest();
 
       expect($document).toHaveModalsOpen(0);
     });
 
-    it('should return to the element which had focus before the dialog is invoked', function () {
+    it('should return to the element which had focus before the dialog was invoked', function () {
       var link = '<a href>Link</a>';
       var element = angular.element(link);
       angular.element(document.body).append(element);
@@ -258,17 +263,39 @@ describe('$modal', function () {
       expect(document.activeElement.tagName).toBe('A');
 
       var modal = open({template: '<div>Content<button>inside modal</button></div>'});
-      $timeout.flush();
       expect(document.activeElement.tagName).toBe('DIV');
       expect($document).toHaveModalsOpen(1);
 
       triggerKeyDown($document, 27);
-      $timeout.flush();
+      $animate.triggerCallbacks();
       $rootScope.$digest();
 
       expect(document.activeElement.tagName).toBe('A');
       expect($document).toHaveModalsOpen(0);
 
+      element.remove();
+    });
+
+    it('should return to document.body if element which had focus before the dialog was invoked is gone, or is missing focus function', function () {
+      var link = '<a href>Link</a>';
+      var element = angular.element(link);
+      angular.element(document.body).append(element);
+      element.focus();
+      expect(document.activeElement.tagName).toBe('A');
+
+      var modal = open({template: '<div>Content</div>'});
+      expect(document.activeElement.tagName).toBe('DIV');
+      expect($document).toHaveModalsOpen(1);
+
+      // Fake undefined focus function, happening in IE in certain
+      // iframe conditions. See issue 3639
+      element[0].focus = undefined;
+      triggerKeyDown($document, 27);
+      $animate.triggerCallbacks();
+      $rootScope.$digest();
+
+      expect(document.activeElement.tagName).toBe('BODY');
+      expect($document).toHaveModalsOpen(0);
       element.remove();
     });
 
@@ -417,6 +444,14 @@ describe('$modal', function () {
         }, controllerAs: 'test'});
         expect($document).toHaveModalOpenWithContent('Content from ctrl true', 'div');
       });
+
+      it('should allow usage of bindToController', function () {
+        open({template: '<div>{{fromCtrl}} {{isModalInstance}}</div>', controller: function($modalInstance) {
+          this.fromCtrl = 'Content from ctrl';
+          this.isModalInstance = angular.isObject($modalInstance) && angular.isFunction($modalInstance.close);
+        }, controllerAs: 'test', bindToController: true});
+        expect($document).toHaveModalOpenWithContent('Content from ctrl true', 'div');
+      });
     });
 
     describe('resolve', function () {
@@ -556,20 +591,17 @@ describe('$modal', function () {
         expect($document).toHaveBackdrop();
       });
 
-      it('should animate backdrop on each modal opening', function () {
+      it('should contain backdrop in classes on each modal opening', function () {
 
         var modal = open({ template: '<div>With backdrop</div>' });
         var backdropEl = $document.find('body > div.modal-backdrop');
-        expect(backdropEl).not.toHaveClass('in');
-
-        $timeout.flush();
         expect(backdropEl).toHaveClass('in');
 
         dismiss(modal);
 
         modal = open({ template: '<div>With backdrop</div>' });
         backdropEl = $document.find('body > div.modal-backdrop');
-        expect(backdropEl).not.toHaveClass('in');
+        expect(backdropEl).toHaveClass('in');
 
       });
 
@@ -726,13 +758,11 @@ describe('$modal', function () {
       expect(document.activeElement.tagName).toBe('A');
 
       var modal1 = open({template: '<div>Modal1<button id="focus">inside modal1</button></div>'});
-      $timeout.flush();
       document.getElementById('focus').focus();
       expect(document.activeElement.tagName).toBe('BUTTON');
       expect($document).toHaveModalsOpen(1);
 
       var modal2 = open({template: '<div>Modal2</div>'});
-      $timeout.flush();
       expect(document.activeElement.tagName).toBe('DIV');
       expect($document).toHaveModalsOpen(2);
 
@@ -765,7 +795,7 @@ describe('$modal', function () {
       modal = open({template: template, controller: TestCtrl});
 
       preventDefault = true;
-      expect(close(modal, 'result')).toBeFalsy();
+      expect(close(modal, 'result', true)).toBeFalsy();
       expect($document).toHaveModalsOpen(1);
 
       preventDefault = false;
@@ -775,7 +805,7 @@ describe('$modal', function () {
       modal = open({template: template, controller: TestCtrl});
 
       preventDefault = true;
-      expect(dismiss(modal, 'result')).toBeFalsy();
+      expect(dismiss(modal, 'result', true)).toBeFalsy();
       expect($document).toHaveModalsOpen(1);
 
       preventDefault = false;

@@ -55,3 +55,7 @@ The typeahead directives provide several attributes:
 * `typeahead-focus-first`
    _(Defaults: true)_ :
    Should the first match automatically be focused as you type?
+
+* `typeahead-select-on-blur`
+   _(Defaults: false)_ :
+   On blur, select the currently highlighted match
