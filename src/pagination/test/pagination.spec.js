@@ -1,14 +1,16 @@
-describe('pagination directive', function () {
-  var $compile, $rootScope, $document, element;
+describe('pagination directive', function() {
+  var $compile, $rootScope, $document, $templateCache, body, element;
   beforeEach(module('ui.bootstrap.pagination'));
   beforeEach(module('template/pagination/pagination.html'));
-  beforeEach(inject(function(_$compile_, _$rootScope_, _$document_) {
+  beforeEach(inject(function(_$compile_, _$rootScope_, _$document_, _$templateCache_) {
     $compile = _$compile_;
     $rootScope = _$rootScope_;
     $rootScope.total = 47; // 5 pages
     $rootScope.currentPage = 3;
     $rootScope.disabled = false;
     $document = _$document_;
+    $templateCache = _$templateCache_;
+    body = $document.find('body');
     element = $compile('<pagination total-items="total" ng-model="currentPage"></pagination>')($rootScope);
     $rootScope.$digest();
   }));
@@ -24,7 +26,7 @@ describe('pagination directive', function () {
   function clickPaginationEl(index) {
     getPaginationEl(index).find('a').click();
   }
-  
+
   function getPaginationLinkEl(elem, index) {
     return elem.find('li').eq(index).find('a');
   }
@@ -34,14 +36,40 @@ describe('pagination directive', function () {
     $rootScope.$digest();
   }
 
-  function setDisabled(value)
-  {
+  function setDisabled(value) {
     $rootScope.disabled = value;
     $rootScope.$digest();
   }
 
   it('has a "pagination" css class', function() {
     expect(element.hasClass('pagination')).toBe(true);
+  });
+
+  it('exposes the controller to the template', function() {
+    $templateCache.put('template/pagination/pagination.html', '<div>{{pagination.randomText}}</div>');
+    var scope = $rootScope.$new();
+
+    element = $compile('<pagination></pagination>')(scope);
+    $rootScope.$digest();
+
+    var ctrl = element.controller('pagination');
+
+    expect(ctrl).toBeDefined();
+
+    ctrl.randomText = 'foo';
+    $rootScope.$digest();
+
+    expect(element.html()).toBe('foo');
+  });
+
+  it('allows custom templates', function() {
+    $templateCache.put('foo/bar.html', '<div>baz</div>');
+    var scope = $rootScope.$new();
+
+    element = $compile('<pagination template-url="foo/bar.html"></pagination>')(scope);
+    $rootScope.$digest();
+
+    expect(element.html()).toBe('baz');
   });
 
   it('contains num-pages + 2 li elements', function() {
@@ -134,46 +162,46 @@ describe('pagination directive', function () {
     expect($rootScope.currentPage).toBe(1);
   });
 
-  it('should blur a page link after it has been clicked', function () {
-    $document.find('body').append(element);
+  it('should blur a page link after it has been clicked', function() {
+    body.append(element);
     var linkEl = getPaginationLinkEl(element, 2);
-    
+
     linkEl.focus();
     expect(linkEl).toHaveFocus();
-    
+
     linkEl.click();
     expect(linkEl).not.toHaveFocus();
-    
+
     element.remove();
   });
-  
-  it('should blur the "next" link after it has been clicked', function () {
-    $document.find('body').append(element);
+
+  it('should blur the "next" link after it has been clicked', function() {
+    body.append(element);
     var linkEl = getPaginationLinkEl(element, -1);
-    
+
     linkEl.focus();
     expect(linkEl).toHaveFocus();
-    
+
     linkEl.click();
     expect(linkEl).not.toHaveFocus();
-    
+
     element.remove();
   });
-  
-  it('should blur the "prev" link after it has been clicked', function () {
-    $document.find('body').append(element);
+
+  it('should blur the "prev" link after it has been clicked', function() {
+    body.append(element);
     var linkEl = getPaginationLinkEl(element, 0);
-    
+
     linkEl.focus();
     expect(linkEl).toHaveFocus();
-    
+
     linkEl.click();
     expect(linkEl).not.toHaveFocus();
-    
+
     element.remove();
   });
-  
-  describe('`items-per-page`', function () {
+
+  describe('`items-per-page`', function() {
     beforeEach(function() {
       $rootScope.perpage = 5;
       element = $compile('<pagination total-items="total" items-per-page="perpage" ng-model="currentPage"></pagination>')($rootScope);
@@ -216,7 +244,7 @@ describe('pagination directive', function () {
     });
   });
 
-  describe('executes  `ng-change` expression', function () {
+  describe('executes  `ng-change` expression', function() {
     beforeEach(function() {
       $rootScope.selectPageHandler = jasmine.createSpy('selectPageHandler');
       element = $compile('<pagination total-items="total" ng-model="currentPage" ng-change="selectPageHandler()"></pagination>')($rootScope);
@@ -229,7 +257,7 @@ describe('pagination directive', function () {
     });
   });
 
-  describe('when `page` is not a number', function () {
+  describe('when `page` is not a number', function() {
     it('handles numerical string', function() {
       updateCurrentPage('2');
       expect(getPaginationEl(2)).toHaveClass('active');
@@ -244,7 +272,7 @@ describe('pagination directive', function () {
     });
   });
 
-  describe('with `max-size` option', function () {
+  describe('with `max-size` option', function() {
     beforeEach(function() {
       $rootScope.total = 98; // 10 pages
       $rootScope.currentPage = 3;
@@ -310,22 +338,22 @@ describe('pagination directive', function () {
       expect(getPaginationEl(0).text()).toBe('Previous');
       expect(getPaginationEl(-1).text()).toBe('Next');
     });
-    
+
     it('should blur page link when visible range changes', function () {
-      $document.find('body').append(element);
+      body.append(element);
       var linkEl = getPaginationLinkEl(element, 4);
-      
+
       linkEl.focus();
       expect(linkEl).toHaveFocus();
-      
+
       linkEl.click();
       expect(linkEl).not.toHaveFocus();
-      
+
       element.remove();
     });
   });
 
-  describe('with `max-size` option & no `rotate`', function () {
+  describe('with `max-size` option & no `rotate`', function() {
     beforeEach(function() {
       $rootScope.total = 115; // 12 pages
       $rootScope.currentPage = 7;
@@ -388,7 +416,7 @@ describe('pagination directive', function () {
     });
   });
 
-  describe('pagination directive with `boundary-links`', function () {
+  describe('pagination directive with `boundary-links`', function() {
     beforeEach(function() {
       element = $compile('<pagination boundary-links="true" total-items="total" ng-model="currentPage"></pagination>')($rootScope);
       $rootScope.$digest();
@@ -479,35 +507,35 @@ describe('pagination directive', function () {
       expect(getPaginationEl(1).text()).toBe('<<');
       expect(getPaginationEl(-2).text()).toBe('>>');
     });
-    
-    it('should blur the "first" link after it has been clicked', function () {
-      $document.find('body').append(element);
+
+    it('should blur the "first" link after it has been clicked', function() {
+      body.append(element);
       var linkEl = getPaginationLinkEl(element, 0);
-      
+
       linkEl.focus();
       expect(linkEl).toHaveFocus();
-      
+
       linkEl.click();
       expect(linkEl).not.toHaveFocus();
-      
+
       element.remove();
     });
-    
-    it('should blur the "last" link after it has been clicked', function () {
-      $document.find('body').append(element);
+
+    it('should blur the "last" link after it has been clicked', function() {
+      body.append(element);
       var linkEl = getPaginationLinkEl(element, -1);
-      
+
       linkEl.focus();
       expect(linkEl).toHaveFocus();
-      
+
       linkEl.click();
       expect(linkEl).not.toHaveFocus();
-      
+
       element.remove();
     });
   });
 
-  describe('pagination directive with just number links', function () {
+  describe('pagination directive with just number links', function() {
     beforeEach(function() {
       element = $compile('<pagination direction-links="false" total-items="total" ng-model="currentPage"></pagination>')($rootScope);
       $rootScope.$digest();
@@ -558,7 +586,7 @@ describe('pagination directive', function () {
     });
   });
 
-  describe('with just boundary & number links', function () {
+  describe('with just boundary & number links', function() {
     beforeEach(function() {
       $rootScope.directions = false;
       element = $compile('<pagination boundary-links="true" direction-links="directions" total-items="total" ng-model="currentPage"></pagination>')($rootScope);
@@ -629,7 +657,7 @@ describe('pagination directive', function () {
       angular.copy(originalConfig, paginationConfig);
     }));
 
-    it('should change paging text', function () {
+    it('should change paging text', function() {
       paginationConfig.boundaryLinks = true;
       paginationConfig.directionLinks = true;
       paginationConfig.firstText = 'FI';
@@ -653,7 +681,7 @@ describe('pagination directive', function () {
       expect(getPaginationBarSize()).toBe(12);
     });
 
-    it('should take maxSize defaults into account', function () {
+    it('should take maxSize defaults into account', function() {
       paginationConfig.maxSize = 2;
       element = $compile('<pagination total-items="total" ng-model="currentPage"></pagination>')($rootScope);
       $rootScope.$digest();
@@ -662,7 +690,7 @@ describe('pagination directive', function () {
     });
   });
 
-  describe('override configuration from attributes', function () {
+  describe('override configuration from attributes', function() {
     beforeEach(function() {
       element = $compile('<pagination boundary-links="true" first-text="<<" previous-text="<" next-text=">" last-text=">>" total-items="total" ng-model="currentPage"></pagination>')($rootScope);
       $rootScope.$digest();
@@ -672,7 +700,7 @@ describe('pagination directive', function () {
       expect(getPaginationBarSize()).toBe(9);
     });
 
-    it('should change paging text from attribute', function () {
+    it('should change paging text from attribute', function() {
       expect(getPaginationEl(0).text()).toBe('<<');
       expect(getPaginationEl(1).text()).toBe('<');
       expect(getPaginationEl(-2).text()).toBe('>');
@@ -680,7 +708,7 @@ describe('pagination directive', function () {
     });
   });
 
-  describe('disabled with ngDisable', function () {
+  describe('disabled with ngDisable', function() {
     beforeEach(function() {
       element = $compile('<pagination total-items="total" ng-model="currentPage" ng-disabled="disabled"></pagination>')($rootScope);
       $rootScope.currentPage = 3;
@@ -696,7 +724,7 @@ describe('pagination directive', function () {
       expect($rootScope.currentPage).toBe(2);
     });
 
-    it('should change the class of all buttons except selected one', function () {
+    it('should change the class of all buttons except selected one', function() {
       setDisabled(false);
       expect(getPaginationEl(3).hasClass('active')).toBe(true);
       expect(getPaginationEl(4).hasClass('active')).toBe(false);
