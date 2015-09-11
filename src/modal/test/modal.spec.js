@@ -1,14 +1,6 @@
 describe('$modal', function () {
   var $animate, $controllerProvider, $rootScope, $document, $compile, $templateCache, $timeout, $q;
-  var $modal, $modalProvider;
-
-  var triggerKeyDown = function(element, keyCode, shiftKey) {
-    var e = $.Event('keydown');
-    e.srcElement = element[0];
-    e.which = keyCode;
-    e.shiftKey = shiftKey;
-    element.trigger(e);
-  };
+  var $modal, $modalStack, $modalProvider;
 
   beforeEach(module('ngAnimateMock'));
   beforeEach(module('ui.bootstrap.modal'));
@@ -19,7 +11,7 @@ describe('$modal', function () {
     $modalProvider = _$modalProvider_;
   }));
 
-  beforeEach(inject(function(_$animate_, _$rootScope_, _$document_, _$compile_, _$templateCache_, _$timeout_, _$q_, _$modal_) {
+  beforeEach(inject(function(_$animate_, _$rootScope_, _$document_, _$compile_, _$templateCache_, _$timeout_, _$q_, _$modal_, _$modalStack_) {
     $animate = _$animate_;
     $rootScope = _$rootScope_;
     $document = _$document_;
@@ -28,6 +20,7 @@ describe('$modal', function () {
     $timeout = _$timeout_;
     $q = _$q_;
     $modal = _$modal_;
+    $modalStack = _$modalStack_;
   }));
 
   beforeEach(function() {
@@ -143,6 +136,14 @@ describe('$modal', function () {
     body.removeClass('modal-open');
   });
 
+  function triggerKeyDown(element, keyCode, shiftKey) {
+    var e = $.Event('keydown');
+    e.srcElement = element[0];
+    e.which = keyCode;
+    e.shiftKey = shiftKey;
+    element.trigger(e);
+  }
+
   function open(modalOptions) {
     var modal = $modal.open(modalOptions);
     $rootScope.$digest();
@@ -154,7 +155,10 @@ describe('$modal', function () {
     var closed = modal.close(result);
     $rootScope.$digest();
     if (!noFlush) {
-      $animate.triggerCallbacks();
+      $animate.flush();
+      $rootScope.$digest();
+      $animate.flush();
+      $rootScope.$digest();
     }
     return closed;
   }
@@ -163,7 +167,10 @@ describe('$modal', function () {
     var closed = modal.dismiss(reason);
     $rootScope.$digest();
     if (!noFlush) {
-      $animate.triggerCallbacks();
+      $animate.flush();
+      $rootScope.$digest();
+      $animate.flush();
+      $rootScope.$digest();
     }
     return closed;
   }
@@ -231,7 +238,9 @@ describe('$modal', function () {
       expect($document).toHaveModalsOpen(1);
 
       triggerKeyDown($document, 27);
-      $animate.triggerCallbacks();
+      $animate.flush();
+      $rootScope.$digest();
+      $animate.flush();
       $rootScope.$digest();
 
       expect($document).toHaveModalsOpen(0);
@@ -251,7 +260,9 @@ describe('$modal', function () {
       button.off('keydown', preventKeyDown);
 
       triggerKeyDown(button, 27);
-      $animate.triggerCallbacks();
+      $animate.flush();
+      $rootScope.$digest();
+      $animate.flush();
       $rootScope.$digest();
 
       expect($document).toHaveModalsOpen(0);
@@ -266,7 +277,9 @@ describe('$modal', function () {
       expect($document).toHaveModalsOpen(1);
 
       $document.find('body > div.modal').click();
-      $animate.triggerCallbacks();
+      $animate.flush();
+      $rootScope.$digest();
+      $animate.flush();
       $rootScope.$digest();
 
       expect($document).toHaveModalsOpen(0);
@@ -280,11 +293,15 @@ describe('$modal', function () {
       expect(document.activeElement.tagName).toBe('A');
 
       var modal = open({template: '<div>Content<button>inside modal</button></div>'});
+      $animate.flush();
+      $rootScope.$digest();
       expect(document.activeElement.tagName).toBe('DIV');
       expect($document).toHaveModalsOpen(1);
 
       triggerKeyDown($document, 27);
-      $animate.triggerCallbacks();
+      $animate.flush();
+      $rootScope.$digest();
+      $animate.flush();
       $rootScope.$digest();
 
       expect(document.activeElement.tagName).toBe('A');
@@ -301,6 +318,8 @@ describe('$modal', function () {
       expect(document.activeElement.tagName).toBe('A');
 
       var modal = open({template: '<div>Content</div>'});
+      $animate.flush();
+      $rootScope.$digest();
       expect(document.activeElement.tagName).toBe('DIV');
       expect($document).toHaveModalsOpen(1);
 
@@ -308,7 +327,9 @@ describe('$modal', function () {
       // iframe conditions. See issue 3639
       element[0].focus = undefined;
       triggerKeyDown($document, 27);
-      $animate.triggerCallbacks();
+      $animate.flush();
+      $rootScope.$digest();
+      $animate.flush();
       $rootScope.$digest();
 
       expect(document.activeElement.tagName).toBe('BODY');
@@ -338,7 +359,10 @@ describe('$modal', function () {
 
       expect(modal.result).toBeRejectedWith('$uibUnscheduledDestruction');
 
-      $animate.triggerCallbacks();
+      $animate.flush();
+      $rootScope.$digest();
+      $animate.flush();
+      $rootScope.$digest();
       expect($document).toHaveModalsOpen(0);
     });
 
@@ -358,10 +382,11 @@ describe('$modal', function () {
       expect(modal.opened).toBeRejectedWith('ko');
     });
 
-    it('should focus on the element that has autofocus attribute when the modal is open/reopen', function() {
+    it('should focus on the element that has autofocus attribute when the modal is open/reopen and the animations have finished', function() {
       function openAndCloseModalWithAutofocusElement() {
         var modal = open({template: '<div><input type="text" id="auto-focus-element" autofocus></div>'});
-
+        $animate.flush();
+        $rootScope.$digest();
         expect(angular.element('#auto-focus-element')).toHaveFocus();
 
         close(modal, 'closed ok');
@@ -371,6 +396,45 @@ describe('$modal', function () {
 
       openAndCloseModalWithAutofocusElement();
       openAndCloseModalWithAutofocusElement();
+    });
+
+    it('should wait until the in animation is finished before attempting to focus the modal or autofocus element', function() {
+      function openAndCloseModalWithAutofocusElement() {
+        var modal = open({template: '<div><input type="text" id="auto-focus-element" autofocus></div>'});
+        expect(angular.element('#auto-focus-element')).not.toHaveFocus();
+
+        $animate.flush();
+        $rootScope.$digest();
+
+        expect(angular.element('#auto-focus-element')).toHaveFocus();
+
+        close(modal, 'closed ok');
+
+        expect(modal.result).toBeResolvedWith('closed ok');
+      }
+
+      function openAndCloseModalWithOutAutofocusElement() {
+        var link = '<a href>Link</a>';
+        var element = angular.element(link);
+        angular.element(document.body).append(element);
+        element.focus();
+        expect(document.activeElement.tagName).toBe('A');
+
+        var modal = open({template: '<div><input type="text"></div>'});
+        expect(document.activeElement.tagName).toBe('A');
+
+        $animate.flush();
+        $rootScope.$digest();
+
+        expect(document.activeElement.tagName).toBe('DIV');
+
+        close(modal, 'closed ok');
+
+        expect(modal.result).toBeResolvedWith('closed ok');
+      }
+
+      openAndCloseModalWithAutofocusElement();
+      openAndCloseModalWithOutAutofocusElement();
     });
 
     it('should change focus to first element when tab key was pressed', function() {
@@ -388,6 +452,8 @@ describe('$modal', function () {
       lastElement.focus();
       triggerKeyDown(lastElement, 9);
       expect(document.activeElement.getAttribute('id')).toBe('tab-focus-link');
+
+      initialPage.remove();
     });
 
     it('should change focus to last element when shift+tab key is pressed', function() {
@@ -405,13 +471,13 @@ describe('$modal', function () {
       lastElement.focus();
       triggerKeyDown(lastElement, 9, true);
       expect(document.activeElement.getAttribute('id')).toBe('tab-focus-button');
+
+      initialPage.remove();
     });
   });
 
   describe('default options can be changed in a provider', function() {
-
     it('should allow overriding default options in a provider', function() {
-
       $modalProvider.options.backdrop = false;
       var modal = open({template: '<div>Content</div>'});
 
@@ -420,7 +486,6 @@ describe('$modal', function () {
     });
 
     it('should accept new objects with default options in a provider', function() {
-
       $modalProvider.options = {
         backdrop: false
       };
@@ -432,9 +497,7 @@ describe('$modal', function () {
   });
 
   describe('option by option', function () {
-
     describe('template and templateUrl', function () {
-
       it('should throw an error if none of template and templateUrl are provided', function() {
         expect(function(){
           var modal = open({});
@@ -464,11 +527,9 @@ describe('$modal', function () {
         }});
         expect($document).toHaveModalOpenWithContent('Whitespaces', 'div');
       });
-
     });
 
     describe('controller', function() {
-
       it('should accept controllers and inject modal instances', function() {
         var TestCtrl = function($scope, $modalInstance) {
           $scope.fromCtrl = 'Content from ctrl';
@@ -552,6 +613,19 @@ describe('$modal', function () {
         });
 
         expect($document).toHaveModalOpenWithContent('Content from resolve', 'div');
+      });
+
+      it('should resolve promises as promises', function() {
+        open({
+          controller: function($scope, $foo) {
+            $scope.value = 'Content from resolve';
+            expect($foo).toBe('bar');
+          },
+          resolve: {
+            $foo: $q.when('bar')
+          },
+          template: '<div>{{value}}</div>'
+        });
       });
 
       it('should delay showing modal if one of the resolves is a promise', function() {
@@ -663,12 +737,14 @@ describe('$modal', function () {
 
       it('should contain backdrop in classes on each modal opening', function() {
         var modal = open({ template: '<div>With backdrop</div>' });
+        $animate.flush();
         var backdropEl = $document.find('body > div.modal-backdrop');
         expect(backdropEl).toHaveClass('in');
 
         dismiss(modal);
 
         modal = open({ template: '<div>With backdrop</div>' });
+        $animate.flush();
         backdropEl = $document.find('body > div.modal-backdrop');
         expect(backdropEl).toHaveClass('in');
 
@@ -694,6 +770,17 @@ describe('$modal', function () {
         });
 
         expect($document.find('div.modal')).toHaveClass('additional');
+      });
+    });
+
+    describe('top window class', function () {
+      it('should support top class option', function () {
+        open({
+          template: '<div>With custom window top class</div>',
+          windowTopClass: 'top-class'
+        });
+
+        expect($document.find('div.modal')).toHaveClass('top-class');
       });
     });
 
@@ -729,7 +816,7 @@ describe('$modal', function () {
     describe('animation', function() {
       it('should have animation fade classes by default', function() {
         open({
-          template: '<div>Small modal dialog</div>',
+          template: '<div>Small modal dialog</div>'
         });
 
         expect($document.find('.modal')).toHaveClass('fade');
@@ -783,6 +870,52 @@ describe('$modal', function () {
         close(modal);
 
         expect(body).not.toHaveClass('foo');
+      });
+
+      it('should add multiple custom classes to the body element and remove appropriately', function() {
+        var modal1 = open({
+          template: '<div>dummy modal</div>',
+          openedClass: 'foo'
+        });
+
+        expect(body).toHaveClass('foo');
+        expect(body).not.toHaveClass('modal-open');
+
+        var modal2 = open({
+          template: '<div>dummy modal</div>',
+          openedClass: 'bar'
+        });
+
+        expect(body).toHaveClass('foo');
+        expect(body).toHaveClass('bar');
+        expect(body).not.toHaveClass('modal-open');
+
+        var modal3 = open({
+          template: '<div>dummy modal</div>',
+          openedClass: 'foo'
+        });
+
+        expect(body).toHaveClass('foo');
+        expect(body).toHaveClass('bar');
+        expect(body).not.toHaveClass('modal-open');
+
+        close(modal1);
+
+        expect(body).toHaveClass('foo');
+        expect(body).toHaveClass('bar');
+        expect(body).not.toHaveClass('modal-open');
+
+        close(modal2);
+
+        expect(body).toHaveClass('foo');
+        expect(body).not.toHaveClass('bar');
+        expect(body).not.toHaveClass('modal-open');
+
+        close(modal3);
+
+        expect(body).not.toHaveClass('foo');
+        expect(body).not.toHaveClass('bar');
+        expect(body).not.toHaveClass('modal-open');
       });
     });
   });
@@ -854,11 +987,15 @@ describe('$modal', function () {
       expect(document.activeElement.tagName).toBe('A');
 
       var modal1 = open({template: '<div>Modal1<button id="focus">inside modal1</button></div>'});
+      $animate.flush();
+      $rootScope.$digest();
       document.getElementById('focus').focus();
       expect(document.activeElement.tagName).toBe('BUTTON');
       expect($document).toHaveModalsOpen(1);
 
       var modal2 = open({template: '<div>Modal2</div>'});
+      $animate.flush();
+      $rootScope.$digest();
       expect(document.activeElement.tagName).toBe('DIV');
       expect($document).toHaveModalsOpen(2);
 
@@ -871,6 +1008,113 @@ describe('$modal', function () {
       expect($document).toHaveModalsOpen(0);
 
       element.remove();
+    });
+
+    it('should open modals and resolve the opened promises in order', function() {
+      // Opens a modal for each element in array order.
+      // Order is an array of non-repeating integers from 0..length-1 representing when to resolve that modal's promise.
+      // For example [1,2,0] would resolve the 3rd modal's promise first and the 2nd modal's promise last.
+      // Tests that the modals are added to $modalStack and that each resolves its "opened" promise sequentially.
+      // If an element is {reject:n} then n is still the order, but the corresponding promise is rejected.
+      // A rejection earlier in the open sequence should not affect modals opened later.
+      function test(order) {
+        var ds = []; // {index, deferred, reject}
+        var expected = ''; // 0..length-1
+        var actual = '';
+        angular.forEach(order, function(x, i) {
+          var reject = x.reject !== undefined;
+          if (reject) {
+            x = x.reject;
+          } else {
+            expected += i;
+          }
+          ds[x] = {index:i, deferred:$q.defer(), reject:reject};
+
+          var scope = $rootScope.$new();
+          scope.index = i;
+          open({
+            template: '<div>' + i + '</div>',
+            scope: scope,
+            resolve: {
+              x: function() { return ds[x].deferred.promise; }
+            }
+          }).opened.then(function() {
+            expect($modalStack.getTop().value.modalScope.index).toEqual(i);
+            actual += i;
+          });
+        });
+
+        angular.forEach(ds, function(d, i) {
+          if (d.reject) {
+            d.deferred.reject('rejected:' + d.index );
+          } else {
+            d.deferred.resolve('resolved:' + d.index );
+          }
+          $rootScope.$digest();
+        });
+
+        expect(actual).toEqual(expected);
+        expect($modal.getPromiseChain()).toEqual(null);
+      }
+
+      // Calls emit n! times on arrays of length n containing all non-repeating permutations of the integers 0..n-1.
+      function permute(n, emit) {
+        if (n < 1 || typeof emit !== 'function') {
+          return;
+        }
+        var a = [];
+        function _permute(depth) {
+          index: for (var i = 0; i < n; i++) {
+            for (var j = 0; j < depth; j++) {
+              if (a[j] === i) {
+                continue index; // already used
+              }
+            }
+
+            a[depth] = i;
+            if (depth + 1 === n) {
+              emit(angular.copy(a));
+            } else {
+              _permute(depth + 1);
+            }
+          }
+        }
+        _permute(0);
+      }
+
+      permute(2, function(a) { test(a); });
+      permute(2, function(a) { test(a.map(function(x, i) { return {reject:x}; })); });
+      permute(2, function(a) { test(a.map(function(x, i) { return i === 0 ? {reject:x} : x; })); });
+      permute(3, function(a) { test(a); });
+      permute(3, function(a) { test(a.map(function(x, i) { return {reject:x}; })); });
+      permute(3, function(a) { test(a.map(function(x, i) { return i === 0 ? {reject:x} : x; })); });
+      permute(3, function(a) { test(a.map(function(x, i) { return i === 1 ? {reject:x} : x; })); });
+    });
+
+    it('should have top class only on top window', function () {
+      var modal1 = open({template: '<div>Content1</div>', windowClass: 'modal1', windowTopClass: 'modal-top'});
+      expect($document.find('div.modal1')).toHaveClass('modal-top');
+      expect($document).toHaveModalsOpen(1);
+
+      var modal2 = open({template: '<div>Content1</div>', windowClass: 'modal2', windowTopClass: 'modal-top'});
+      expect($document.find('div.modal1')).not.toHaveClass('modal-top');
+      expect($document.find('div.modal2')).toHaveClass('modal-top');
+      expect($document).toHaveModalsOpen(2);
+
+      var modal3 = open({template: '<div>Content1</div>', windowClass: 'modal3', windowTopClass: 'modal-top'});
+      expect($document.find('div.modal1')).not.toHaveClass('modal-top');
+      expect($document.find('div.modal2')).not.toHaveClass('modal-top');
+      expect($document.find('div.modal3')).toHaveClass('modal-top');
+      expect($document).toHaveModalsOpen(3);
+
+      dismiss(modal2);
+      expect($document.find('div.modal1')).not.toHaveClass('modal-top');
+      expect($document.find('div.modal3')).toHaveClass('modal-top');
+      expect($document).toHaveModalsOpen(2);
+
+      close(modal3);
+      expect($document.find('div.modal1')).toHaveClass('modal-top');
+      expect($document).toHaveModalsOpen(1);
     });
   });
 

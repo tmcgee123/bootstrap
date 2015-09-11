@@ -7,7 +7,7 @@
 *
 */
 angular.module('ui.bootstrap.carousel', [])
-.controller('CarouselController', ['$scope', '$element', '$interval', '$animate', function ($scope, $element, $interval, $animate) {
+.controller('CarouselController', ['$scope', '$element', '$interval', '$animate', function($scope, $element, $interval, $animate) {
   var self = this,
     slides = self.slides = $scope.slides = [],
     NEW_ANIMATE = angular.version.minor >= 4,
@@ -46,7 +46,7 @@ angular.module('ui.bootstrap.carousel', [])
 
       $scope.$currentTransition = true;
       if (NEW_ANIMATE) {
-        $animate.on('addClass', slide.$element, function (element, phase) {
+        $animate.on('addClass', slide.$element, function(element, phase) {
           if (phase === 'close') {
             $scope.$currentTransition = null;
             $animate.off('addClass', element);
@@ -66,7 +66,7 @@ angular.module('ui.bootstrap.carousel', [])
     restartTimer();
   }
 
-  $scope.$on('$destroy', function () {
+  $scope.$on('$destroy', function() {
     destroyed = true;
   });
 
@@ -108,7 +108,7 @@ angular.module('ui.bootstrap.carousel', [])
   $scope.prev = function() {
     var newIndex = self.getCurrentIndex() - 1 < 0 ? slides.length - 1 : self.getCurrentIndex() - 1;
 
-    if ($scope.noWrap() && newIndex === slides.length - 1){
+    if ($scope.noWrap() && newIndex === slides.length - 1) {
       $scope.pause();
       return;
     }
@@ -165,8 +165,8 @@ angular.module('ui.bootstrap.carousel', [])
     slides.push(slide);
     //if this is the first slide or the slide is set to active, select it
     if(slides.length === 1 || slide.active) {
-      self.select(slides[slides.length-1]);
-      if (slides.length == 1) {
+      self.select(slides[slides.length - 1]);
+      if (slides.length === 1) {
         $scope.play();
       }
     } else {
@@ -185,7 +185,7 @@ angular.module('ui.bootstrap.carousel', [])
     slides.splice(index, 1);
     if (slides.length > 0 && slide.active) {
       if (index >= slides.length) {
-        self.select(slides[index-1]);
+        self.select(slides[index - 1]);
       } else {
         self.select(slides[index]);
       }
@@ -316,6 +316,7 @@ function CarouselDemoCtrl($scope) {
     },
     scope: {
       active: '=?',
+      actual: '=?',
       index: '=?'
     },
     link: function (scope, element, attrs, carouselCtrl) {
@@ -353,7 +354,7 @@ function ($injector, $animate) {
   }
 
   return {
-    beforeAddClass: function (element, className, done) {
+    beforeAddClass: function(element, className, done) {
       // Due to transclusion, noTransition property is on parent's scope
       if (className == 'active' && element.parent() &&
           !element.parent().data(NO_TRANSITION)) {
@@ -397,22 +398,18 @@ function ($injector, $animate) {
             .start()
             .done(removeClassFn);
         } else {
-          $animate.addClass(element, directionClass).then(function () {
+          $animate.addClass(element, directionClass).then(function() {
             if (!stopped) {
               removeClassFn();
             }
             done();
           });
         }
-        return function () {
+        return function() {
           stopped = true;
         };
       }
       done();
     }
   };
-
-}])
-
-
-;
+}]);

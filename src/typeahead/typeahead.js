@@ -1,4 +1,4 @@
-angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap.bindHtml'])
+angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position'])
 
 /**
  * A helper service that can parse typeahead's syntax (string provided by users)
@@ -34,9 +34,10 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
     var eventDebounceTime = 200;
 
     return {
-      require: 'ngModel',
-      link: function(originalScope, element, attrs, modelCtrl) {
-
+      require: ['ngModel', '^?ngModelOptions'],
+      link: function(originalScope, element, attrs, ctrls) {
+        var modelCtrl = ctrls[0];
+        var ngModelOptions = ctrls[1];
         //SUPPORTED ATTRIBUTES (OPTIONS)
 
         //minimal no of characters that needs to be entered before typeahead kicks-in
@@ -75,7 +76,16 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
         //INTERNAL VARIABLES
 
         //model setter executed upon match selection
-        var $setModelValue = $parse(attrs.ngModel).assign;
+        var parsedModel = $parse(attrs.ngModel);
+        var invokeModelSetter = $parse(attrs.ngModel + '($$$p)');
+        var $setModelValue = function(scope, newValue) {
+          if (angular.isFunction(parsedModel(originalScope)) &&
+            ngModelOptions && ngModelOptions.$options && ngModelOptions.$options.getterSetter) {
+            return invokeModelSetter(scope, {$$$p: newValue});
+          } else {
+            return parsedModel.assign(scope, newValue);
+          }
+        };
 
         //expressions used by typeahead
         var parserResult = typeaheadParser.parse(attrs.typeahead);
@@ -90,9 +100,10 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
         //create a child scope for the typeahead directive so we are not polluting original scope
         //with typeahead-specific data (matches, query etc.)
         var scope = originalScope.$new();
-        originalScope.$on('$destroy', function() {
-          scope.$destroy();
+        var offDestroy = originalScope.$on('$destroy', function() {
+			    scope.$destroy();
         });
+        scope.$on('$destroy', offDestroy);
 
         // WAI-ARIA
         var popupId = 'typeahead-' + scope.$id + '-' + Math.floor(Math.random() * 10000);
@@ -116,6 +127,10 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
         //custom item template
         if (angular.isDefined(attrs.typeaheadTemplateUrl)) {
           popUpEl.attr('template-url', attrs.typeaheadTemplateUrl);
+        }
+
+        if (angular.isDefined(attrs.typeaheadPopupTemplateUrl)) {
+          popUpEl.attr('popup-template-url', attrs.typeaheadPopupTemplateUrl);
         }
 
         var resetMatches = function() {
@@ -162,7 +177,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
                 scope.matches.length = 0;
 
                 //transform labels
-                for(var i=0; i<matches.length; i++) {
+                for (var i = 0; i < matches.length; i++) {
                   locals[parserResult.itemName] = matches[i];
                   scope.matches.push({
                     id: getMatchId(i),
@@ -340,12 +355,13 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
 
           //return focus to the input element if a match was selected via a mouse click event
           // use timeout to avoid $rootScope:inprog error
-          $timeout(function() { element[0].focus(); }, 0, false);
+          if (scope.$eval(attrs.typeaheadFocusOnSelect) !== false) {
+            $timeout(function() { element[0].focus(); }, 0, false);
+          }
         };
 
         //bind keyboard events: arrows up(38) / down(40), enter(13) and tab(9), esc(27)
         element.bind('keydown', function(evt) {
-
           //typeahead is open and an "interesting" key was pressed
           if (scope.matches.length === 0 || HOT_KEYS.indexOf(evt.which) === -1) {
             return;
@@ -439,7 +455,9 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
         select: '&'
       },
       replace: true,
-      templateUrl: 'template/typeahead/typeahead-popup.html',
+      templateUrl: function(element, attrs) {
+        return attrs.popupTemplateUrl || 'template/typeahead/typeahead-popup.html';
+      },
       link: function(scope, element, attrs) {
         scope.templateUrl = attrs.templateUrl;
 
@@ -481,12 +499,28 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
     };
   }])
 
-  .filter('typeaheadHighlight', function() {
+  .filter('typeaheadHighlight', ['$sce', '$injector', '$log', function($sce, $injector, $log) {
+    var isSanitizePresent;
+    isSanitizePresent = $injector.has('$sanitize');
+
     function escapeRegexp(queryToEscape) {
+      // Regex: capture the whole query string and replace it with the string that will be used to match
+      // the results, for example if the capture is "a" the result will be \a
       return queryToEscape.replace(/([.?*+^$[\]\\(){}|-])/g, '\\$1');
     }
 
+    function containsHtml(matchItem) {
+      return /<.*>/g.test(matchItem);
+    }
+
     return function(matchItem, query) {
-      return query ? ('' + matchItem).replace(new RegExp(escapeRegexp(query), 'gi'), '<strong>$&</strong>') : matchItem;
+      if (!isSanitizePresent && containsHtml(matchItem)) {
+        $log.warn('Unsafe use of typeahead please use ngSanitize'); // Warn the user about the danger
+      }
+      matchItem = query? ('' + matchItem).replace(new RegExp(escapeRegexp(query), 'gi'), '<strong>$&</strong>') : matchItem; // Replaces the capture string with a the same string inside of a "strong" tag
+      if (!isSanitizePresent) {
+        matchItem = $sce.trustAsHtml(matchItem); // If $sanitize is not present we pack the string in a $sce object for the ng-bind-html directive
+      }
+      return matchItem;
     };
-  });
+  }]);

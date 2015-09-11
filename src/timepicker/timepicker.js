@@ -16,29 +16,29 @@ angular.module('ui.bootstrap.timepicker', [])
       ngModelCtrl = { $setViewValue: angular.noop }, // nullModelCtrl
       meridians = angular.isDefined($attrs.meridians) ? $scope.$parent.$eval($attrs.meridians) : timepickerConfig.meridians || $locale.DATETIME_FORMATS.AMPMS;
 
-  this.init = function( ngModelCtrl_, inputs ) {
+  this.init = function(ngModelCtrl_, inputs) {
     ngModelCtrl = ngModelCtrl_;
     ngModelCtrl.$render = this.render;
 
     ngModelCtrl.$formatters.unshift(function(modelValue) {
-      return modelValue ? new Date( modelValue ) : null;
+      return modelValue ? new Date(modelValue) : null;
     });
 
     var hoursInputEl = inputs.eq(0),
         minutesInputEl = inputs.eq(1);
 
     var mousewheel = angular.isDefined($attrs.mousewheel) ? $scope.$parent.$eval($attrs.mousewheel) : timepickerConfig.mousewheel;
-    if ( mousewheel ) {
-      this.setupMousewheelEvents( hoursInputEl, minutesInputEl );
+    if (mousewheel) {
+      this.setupMousewheelEvents(hoursInputEl, minutesInputEl);
     }
 
     var arrowkeys = angular.isDefined($attrs.arrowkeys) ? $scope.$parent.$eval($attrs.arrowkeys) : timepickerConfig.arrowkeys;
     if (arrowkeys) {
-      this.setupArrowkeyEvents( hoursInputEl, minutesInputEl );
+      this.setupArrowkeyEvents(hoursInputEl, minutesInputEl);
     }
 
     $scope.readonlyInput = angular.isDefined($attrs.readonlyInput) ? $scope.$parent.$eval($attrs.readonlyInput) : timepickerConfig.readonlyInput;
-    this.setupInputEvents( hoursInputEl, minutesInputEl );
+    this.setupInputEvents(hoursInputEl, minutesInputEl);
   };
 
   var hourStep = timepickerConfig.hourStep;
@@ -74,7 +74,7 @@ angular.module('ui.bootstrap.timepicker', [])
   };
 
   $scope.noDecrementHours = function() {
-    var decrementedSelected = addMinutes(selected, - hourStep * 60);
+    var decrementedSelected = addMinutes(selected, -hourStep * 60);
     return decrementedSelected < min ||
       (decrementedSelected > selected && decrementedSelected > max);
   };
@@ -86,7 +86,7 @@ angular.module('ui.bootstrap.timepicker', [])
   };
 
   $scope.noDecrementMinutes = function() {
-    var decrementedSelected = addMinutes(selected, - minuteStep);
+    var decrementedSelected = addMinutes(selected, -minuteStep);
     return decrementedSelected < min ||
       (decrementedSelected > selected && decrementedSelected > max);
   };
@@ -95,7 +95,7 @@ angular.module('ui.bootstrap.timepicker', [])
     if (selected.getHours() < 13) {
       return addMinutes(selected, 12 * 60) > max;
     } else {
-      return addMinutes(selected, - 12 * 60) < min;
+      return addMinutes(selected, -12 * 60) < min;
     }
   };
 
@@ -105,11 +105,11 @@ angular.module('ui.bootstrap.timepicker', [])
     $scope.$parent.$watch($parse($attrs.showMeridian), function(value) {
       $scope.showMeridian = !!value;
 
-      if ( ngModelCtrl.$error.time ) {
+      if (ngModelCtrl.$error.time) {
         // Evaluate from template
         var hours = getHoursFromTemplate(), minutes = getMinutesFromTemplate();
-        if (angular.isDefined( hours ) && angular.isDefined( minutes )) {
-          selected.setHours( hours );
+        if (angular.isDefined(hours) && angular.isDefined(minutes)) {
+          selected.setHours(hours);
           refresh();
         }
       } else {
@@ -204,7 +204,7 @@ angular.module('ui.bootstrap.timepicker', [])
     }
 
     var invalidate = function(invalidHours, invalidMinutes) {
-      ngModelCtrl.$setViewValue( null );
+      ngModelCtrl.$setViewValue(null);
       ngModelCtrl.$setValidity('time', false);
       if (angular.isDefined(invalidHours)) {
         $scope.invalidHours = invalidHours;
@@ -233,7 +233,7 @@ angular.module('ui.bootstrap.timepicker', [])
     hoursInputEl.bind('blur', function(e) {
       if (!$scope.invalidHours && $scope.hours < 10) {
         $scope.$apply(function() {
-          $scope.hours = pad( $scope.hours );
+          $scope.hours = pad($scope.hours);
         });
       }
     });
@@ -243,7 +243,7 @@ angular.module('ui.bootstrap.timepicker', [])
         hours = getHoursFromTemplate();
 
       if (angular.isDefined(minutes) && angular.isDefined(hours)) {
-        selected.setMinutes( minutes );
+        selected.setMinutes(minutes);
         if (selected < min || selected > max) {
           invalidate(undefined, true);
         } else {
@@ -256,7 +256,7 @@ angular.module('ui.bootstrap.timepicker', [])
 
     minutesInputEl.bind('blur', function(e) {
       if (!$scope.invalidMinutes && $scope.minutes < 10) {
-        $scope.$apply( function() {
+        $scope.$apply(function() {
           $scope.minutes = pad($scope.minutes);
         });
       }
@@ -290,7 +290,7 @@ angular.module('ui.bootstrap.timepicker', [])
   function refresh(keyboardChange) {
     makeValid();
     ngModelCtrl.$setViewValue(new Date(selected));
-    updateTemplate( keyboardChange );
+    updateTemplate(keyboardChange);
   }
 
   function makeValid() {
@@ -303,7 +303,7 @@ angular.module('ui.bootstrap.timepicker', [])
     var hours = selected.getHours(), minutes = selected.getMinutes();
 
     if ($scope.showMeridian) {
-      hours = ( hours === 0 || hours === 12 ) ? 12 : hours % 12; // Convert 24 to 12 hour system
+      hours = (hours === 0 || hours === 12) ? 12 : hours % 12; // Convert 24 to 12 hour system
     }
 
     $scope.hours = keyboardChange === 'h' ? hours : pad(hours);
@@ -313,7 +313,7 @@ angular.module('ui.bootstrap.timepicker', [])
     $scope.meridian = selected.getHours() < 12 ? meridians[0] : meridians[1];
   }
 
-  function addMinutes(date,  minutes) {
+  function addMinutes(date, minutes) {
     var dt = new Date(date.getTime() + minutes * 60000);
     var newDate = new Date(date);
     newDate.setHours(dt.getHours(), dt.getMinutes());
@@ -321,7 +321,7 @@ angular.module('ui.bootstrap.timepicker', [])
   }
 
   function addMinutesToSelected(minutes) {
-    selected = addMinutes( selected, minutes );
+    selected = addMinutes(selected, minutes);
     refresh();
   }
 
@@ -364,9 +364,12 @@ angular.module('ui.bootstrap.timepicker', [])
     restrict: 'EA',
     require: ['timepicker', '?^ngModel'],
     controller:'TimepickerController',
+    controllerAs: 'timepicker',
     replace: true,
     scope: {},
-    templateUrl: 'template/timepicker/timepicker.html',
+    templateUrl: function(element, attrs) {
+      return attrs.templateUrl || 'template/timepicker/timepicker.html';
+    },
     link: function(scope, element, attrs, ctrls) {
       var timepickerCtrl = ctrls[0], ngModelCtrl = ctrls[1];
 

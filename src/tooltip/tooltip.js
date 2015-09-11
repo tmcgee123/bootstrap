@@ -3,7 +3,7 @@
  * function, placement as a function, inside, support for more triggers than
  * just mouse enter/leave, html tooltips, and selector delegation.
  */
-angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.bindHtml'])
+angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.stackedMap'])
 
 /**
  * The $tooltip service creates tooltip- and popover-like directives as well as
@@ -67,7 +67,19 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
    * Returns the actual instance of the $tooltip service.
    * TODO support multiple triggers
    */
-  this.$get = ['$window', '$compile', '$timeout', '$document', '$position', '$interpolate', '$rootScope', '$parse', function($window, $compile, $timeout, $document, $position, $interpolate, $rootScope, $parse) {
+  this.$get = ['$window', '$compile', '$timeout', '$document', '$position', '$interpolate', '$rootScope', '$parse', '$$stackedMap', function($window, $compile, $timeout, $document, $position, $interpolate, $rootScope, $parse, $$stackedMap) {
+    var openedTooltips = $$stackedMap.createNew();
+    $document.on('keypress', function(e) {
+      if (e.which === 27) {
+        var last = openedTooltips.top();
+        if (last) {
+          last.value.close();
+          openedTooltips.removeTop();
+          last = null;
+        }
+      }
+    });
+
     return function $tooltip(type, prefix, defaultTriggerShow, options) {
       options = angular.extend({}, defaultOptions, globalOptions, options);
 
@@ -111,6 +123,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
           'animation="animation" '+
           'is-open="isOpen"'+
           'origin-scope="origScope" '+
+          'style="visibility: hidden; display: block;"'+
           '>'+
         '</div>';
 
@@ -124,6 +137,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
             var tooltipLinkedScope;
             var transitionTimeout;
             var popupTimeout;
+            var positionTimeout;
             var appendToBody = angular.isDefined(options.appendToBody) ? options.appendToBody : false;
             var triggers = getTriggers(undefined);
             var hasEnableExp = angular.isDefined(attrs[prefix + 'Enable']);
@@ -132,18 +146,31 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
             var isOpenExp = angular.isDefined(attrs[prefix + 'IsOpen']) ? $parse(attrs[prefix + 'IsOpen']) : false;
 
             var positionTooltip = function() {
-              if (!tooltip) { return; }
+              // check if tooltip exists and is not empty
+              if (!tooltip || !tooltip.html()) { return; }
 
-              var ttPosition = $position.positionElements(element, tooltip, ttScope.placement, appendToBody);
-              ttPosition.top += 'px';
-              ttPosition.left += 'px';
+              if (!positionTimeout) {
+                positionTimeout = $timeout(function() {
+                  // Reset the positioning and box size for correct width and height values.
+                  tooltip.css({ top: 0, left: 0, width: 'auto', height: 'auto', visibility: 'hidden' });
 
-              // Now set the calculated positioning.
-              tooltip.css(ttPosition);
-            };
+                  var ttBox = $position.position(tooltip);
+                  var ttCss = $position.positionElements(element, tooltip, ttScope.placement, appendToBody);
+                  ttCss.top += 'px';
+                  ttCss.left += 'px';
 
-            var positionTooltipAsync = function() {
-              $timeout(positionTooltip, 0, false);
+                  ttCss.width = ttBox.width + 'px';
+                  ttCss.height = ttBox.height + 'px';
+
+                  ttCss.visibility = 'visible';
+
+                  // Now set the calculated positioning and size.
+                  tooltip.css(ttCss);
+
+                  positionTimeout = null;
+
+                }, 0, false);
+              }
             };
 
             // Set up the correct scope to allow transclusion later
@@ -152,6 +179,9 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
             // By default, the tooltip is not open.
             // TODO add ability to start tooltip opened
             ttScope.isOpen = false;
+            openedTooltips.add(ttScope, {
+              close: hideTooltipBind
+            });
 
             function toggleTooltipBind() {
               if (!ttScope.isOpen) {
@@ -174,10 +204,9 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
                 // This happens if show is triggered multiple times before any hide is triggered.
                 if (!popupTimeout) {
                   popupTimeout = $timeout(show, ttScope.popupDelay, false);
-                  popupTimeout.then(function(reposition) { reposition(); });
                 }
               } else {
-                show()();
+                show();
               }
             }
 
@@ -190,7 +219,10 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
 
             // Show the tooltip popup element.
             function show() {
-              popupTimeout = null;
+              if (popupTimeout) {
+                $timeout.cancel(popupTimeout);
+                popupTimeout = null;
+              }
 
               // If there is a pending remove transition, we must cancel it, lest the
               // tooltip be mysteriously removed.
@@ -206,14 +238,9 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
 
               createTooltip();
 
-              // Set the initial positioning.
-              tooltip.css({ top: 0, left: 0, display: 'block' });
-
-              positionTooltip();
-
               // And show the tooltip.
               ttScope.isOpen = true;
-              if (isOpenExp) {
+              if (isOpenExp && angular.isFunction(isOpenExp.assign)) {
                 isOpenExp.assign(ttScope.origScope, ttScope.isOpen);
               }
 
@@ -221,22 +248,27 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
                 ttScope.$apply(); // digest required as $apply is not called
               }
 
-              // Return positioning function as promise callback for correct
-              // positioning after draw.
-              return positionTooltip;
+              positionTooltip();
             }
 
             // Hide the tooltip popup element.
             function hide() {
+              if (!ttScope) {
+                return;
+              }
+
               // First things first: we don't show it anymore.
               ttScope.isOpen = false;
-              if (isOpenExp) {
+              if (isOpenExp && angular.isFunction(isOpenExp.assign)) {
                 isOpenExp.assign(ttScope.origScope, ttScope.isOpen);
               }
 
               //if tooltip is going to be shown after delay, we must cancel this
               $timeout.cancel(popupTimeout);
               popupTimeout = null;
+
+              $timeout.cancel(positionTimeout);
+              positionTimeout = null;
 
               // And now we remove it from the DOM. However, if we have animation, we
               // need to wait for it to expire beforehand.
@@ -277,7 +309,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
                     tooltipLinkedScope.$$postDigest(function() {
                       repositionScheduled = false;
                       if (ttScope.isOpen) {
-                        positionTooltipAsync();
+                        positionTooltip();
                       }
                     });
                   }
@@ -322,7 +354,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
                 if (!val && ttScope.isOpen) {
                   hide();
                 } else {
-                  positionTooltipAsync();
+                  positionTooltip();
                 }
               });
             }
@@ -330,6 +362,7 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
             attrs.$observe('disabled', function(val) {
               if (popupTimeout && val) {
                 $timeout.cancel(popupTimeout);
+                popupTimeout = null;
               }
 
               if (val && ttScope.isOpen) {
@@ -339,15 +372,13 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
 
             attrs.$observe(prefix + 'Title', function(val) {
               ttScope.title = val;
-              positionTooltipAsync();
+              positionTooltip();
             });
 
-            attrs.$observe( prefix + 'Placement', function() {
+            attrs.$observe(prefix + 'Placement', function() {
               if (ttScope.isOpen) {
-                $timeout(function() {
-                  prepPlacement();
-                  show()();
-                }, 0, false);
+                prepPlacement();
+                positionTooltip();
               }
             });
 
@@ -385,7 +416,9 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
                 element.unbind(trigger, showTooltipBind);
               });
               triggers.hide.forEach(function(trigger) {
-                element.unbind(trigger, hideTooltipBind);
+                trigger.split(' ').forEach(function(hideTrigger) {
+                  element[0].removeEventListener(hideTrigger, hideTooltipBind);
+                });
               });
             };
 
@@ -397,12 +430,21 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
 
               if (triggers.show !== 'none') {
                 triggers.show.forEach(function(trigger, idx) {
+                  // Using raw addEventListener due to jqLite/jQuery bug - #4060
                   if (trigger === triggers.hide[idx]) {
-                    element.bind(trigger, toggleTooltipBind);
+                    element[0].addEventListener(trigger, toggleTooltipBind);
                   } else if (trigger) {
-                    element.bind(trigger, showTooltipBind);
-                    element.bind(triggers.hide[idx], hideTooltipBind);
+                    element[0].addEventListener(trigger, showTooltipBind);
+                    triggers.hide[idx].split(' ').forEach(function(trigger) {
+                      element[0].addEventListener(trigger, hideTooltipBind);
+                    });
                   }
+
+                  element.on('keypress', function(e) {
+                    if (e.which === 27) {
+                      hideTooltipBind();
+                    }
+                  });
                 });
               }
             }
@@ -427,8 +469,9 @@ angular.module('ui.bootstrap.tooltip', ['ui.bootstrap.position', 'ui.bootstrap.b
 
             // Make sure tooltip is destroyed and removed.
             scope.$on('$destroy', function onDestroyTooltip() {
-              $timeout.cancel( transitionTimeout );
-              $timeout.cancel( popupTimeout );
+              $timeout.cancel(transitionTimeout);
+              $timeout.cancel(popupTimeout);
+              $timeout.cancel(positionTimeout);
               unregisterTriggers();
               removeTooltip();
               ttScope = null;
@@ -572,26 +615,4 @@ function ($animate ,  $sce ,  $compile ,  $templateRequest) {
   return $tooltip('tooltipHtml', 'tooltip', 'mouseenter', {
     useContentExp: true
   });
-}])
-
-/*
-Deprecated
-*/
-.directive('tooltipHtmlUnsafePopup', function() {
-  return {
-    restrict: 'EA',
-    replace: true,
-    scope: { content: '@', placement: '@', popupClass: '@', animation: '&', isOpen: '&' },
-    templateUrl: 'template/tooltip/tooltip-html-unsafe-popup.html'
-  };
-})
-
-.value('tooltipHtmlUnsafeSuppressDeprecated', false)
-.directive('tooltipHtmlUnsafe', [
-          '$tooltip', 'tooltipHtmlUnsafeSuppressDeprecated', '$log',
-function($tooltip ,  tooltipHtmlUnsafeSuppressDeprecated ,  $log) {
-  if (!tooltipHtmlUnsafeSuppressDeprecated) {
-    $log.warn('tooltip-html-unsafe is now deprecated. Use tooltip-html or tooltip-template instead.');
-  }
-  return $tooltip('tooltipHtmlUnsafe', 'tooltip', 'mouseenter');
 }]);

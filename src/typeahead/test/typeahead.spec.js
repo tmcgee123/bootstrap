@@ -1,8 +1,9 @@
 describe('typeahead tests', function() {
-  var $scope, $compile, $document, $timeout;
+  var $scope, $compile, $document, $templateCache, $timeout;
   var changeInputValueTo;
 
   beforeEach(module('ui.bootstrap.typeahead'));
+  beforeEach(module('ngSanitize'));
   beforeEach(module('template/typeahead/typeahead-popup.html'));
   beforeEach(module('template/typeahead/typeahead-match.html'));
   beforeEach(module(function($compileProvider) {
@@ -24,7 +25,7 @@ describe('typeahead tests', function() {
       };
     });
   }));
-  beforeEach(inject(function(_$rootScope_, _$compile_, _$document_, _$timeout_, $sniffer) {
+  beforeEach(inject(function(_$rootScope_, _$compile_, _$document_, _$templateCache_, _$timeout_, $sniffer) {
     $scope = _$rootScope_;
     $scope.source = ['foo', 'bar', 'baz'];
     $scope.states = [
@@ -33,6 +34,7 @@ describe('typeahead tests', function() {
     ];
     $compile = _$compile_;
     $document = _$document_;
+    $templateCache = _$templateCache_;
     $timeout = _$timeout_;
     changeInputValueTo = function(element, value) {
       var inputEl = findInput(element);
@@ -316,7 +318,17 @@ describe('typeahead tests', function() {
       expect(values).toContain('second');
     }));
 
-    it('should support custom templates for matched items', inject(function($templateCache) {
+    it('should support custom popup templates', function() {
+      $templateCache.put('custom.html', '<div class="custom">foo</div>');
+
+      var element = prepareInputEl('<div><input ng-model="result" typeahead-popup-template-url="custom.html" typeahead="state as state.name for state in states | filter:$viewValue"></div>');
+
+      changeInputValueTo(element, 'Al');
+
+      expect(element.find('.custom').text()).toBe('foo');
+    });
+
+    it('should support custom templates for matched items', function() {
       $templateCache.put('custom.html', '<p>{{ index }} {{ match.label }}</p>');
 
       var element = prepareInputEl('<div><input ng-model="result" typeahead-template-url="custom.html" typeahead="state as state.name for state in states | filter:$viewValue"></div>');
@@ -324,9 +336,9 @@ describe('typeahead tests', function() {
       changeInputValueTo(element, 'Al');
 
       expect(findMatches(element).eq(0).find('p').text()).toEqual('0 Alaska');
-    }));
+    });
 
-    it('should support directives which require controllers in custom templates for matched items', inject(function($templateCache) {
+    it('should support directives which require controllers in custom templates for matched items', function() {
       $templateCache.put('custom.html', '<p child-directive>{{ index }} {{ match.label }}</p>');
 
       var element = prepareInputEl('<div><input ng-model="result" typeahead-template-url="custom.html" typeahead="state as state.name for state in states | filter:$viewValue"></div>');
@@ -336,7 +348,7 @@ describe('typeahead tests', function() {
       changeInputValueTo(element, 'Al');
 
       expect(findMatches(element).eq(0).find('p').text()).toEqual('0 Alaska');
-    }));
+    });
 
     it('should throw error on invalid expression', function() {
       var prepareInvalidDir = function() {
@@ -469,8 +481,24 @@ describe('typeahead tests', function() {
       $timeout.flush();
       expect($scope.isNoResults).toBeFalsy();
     }));
+
+    it('should not focus the input if `typeahead-focus-on-select` is false', function() {
+      var element = prepareInputEl('<div><input ng-model="result" typeahead="item for item in source | filter:$viewValue" typeahead-focus-on-select="false"></div>');
+      $document.find('body').append(element);
+      var inputEl = findInput(element);
+
+      changeInputValueTo(element, 'b');
+      var match = $(findMatches(element)[1]).find('a')[0];
+
+      $(match).click();
+      $scope.$digest();
+      $timeout.flush();
+
+      expect(document.activeElement).not.toBe(inputEl[0]);
+      expect($scope.result).toEqual('baz');
+    });
   });
-  
+
   describe('select on exact match', function() {
     it('should select on an exact match when set', function() {
       $scope.onSelect = jasmine.createSpy('onSelect');
@@ -478,45 +506,45 @@ describe('typeahead tests', function() {
       var inputEl = findInput(element);
 
       changeInputValueTo(element, 'bar');
-      
+
       expect($scope.result).toEqual('bar');
       expect(inputEl.val()).toEqual('bar');
       expect(element).toBeClosed();
       expect($scope.onSelect).toHaveBeenCalled();
     });
-    
+
     it('should not select on an exact match by default', function() {
       $scope.onSelect = jasmine.createSpy('onSelect');
       var element = prepareInputEl('<div><input ng-model="result" typeahead-editable="false" typeahead-on-select="onSelect()" typeahead="item for item in source | filter:$viewValue"></div>');
       var inputEl = findInput(element);
-      
+
       changeInputValueTo(element, 'bar');
-      
+
       expect($scope.result).toBeUndefined();
       expect(inputEl.val()).toEqual('bar');
       expect($scope.onSelect.calls.any()).toBe(false);
     });
-    
+
     it('should not be case sensitive when select on an exact match', function() {
       $scope.onSelect = jasmine.createSpy('onSelect');
       var element = prepareInputEl('<div><input ng-model="result" typeahead-editable="false" typeahead-on-select="onSelect()" typeahead="item for item in source | filter:$viewValue" typeahead-select-on-exact="true"></div>');
       var inputEl = findInput(element);
 
       changeInputValueTo(element, 'BaR');
-      
+
       expect($scope.result).toEqual('bar');
       expect(inputEl.val()).toEqual('bar');
       expect(element).toBeClosed();
       expect($scope.onSelect).toHaveBeenCalled();
     });
-    
+
     it('should not auto select when not a match with one potential result left', function() {
       $scope.onSelect = jasmine.createSpy('onSelect');
       var element = prepareInputEl('<div><input ng-model="result" typeahead-editable="false" typeahead-on-select="onSelect()" typeahead="item for item in source | filter:$viewValue" typeahead-select-on-exact="true"></div>');
       var inputEl = findInput(element);
 
       changeInputValueTo(element, 'fo');
-      
+
       expect($scope.result).toBeUndefined();
       expect(inputEl.val()).toEqual('fo');
       expect($scope.onSelect.calls.any()).toBe(false);
@@ -791,6 +819,19 @@ describe('typeahead tests', function() {
       triggerKeyDown(element, 13);
 
       expect($scope.test.typeahead.$error.parse).toBeUndefined();
+    });
+
+    it('issue #3823 - should support ng-model-options getterSetter', function() {
+      function resultSetter(state) {
+        return state;
+      }
+      $scope.result = resultSetter;
+      var element = prepareInputEl('<div><input name="typeahead" ng-model="result" ng-model-options="{getterSetter: true}" typeahead="state as state.name for state in states | filter:$viewValue" typeahead-editable="false"></div>');
+
+      changeInputValueTo(element, 'Alaska');
+      triggerKeyDown(element, 13);
+
+      expect($scope.result).toBe(resultSetter);
     });
   });
 

@@ -57,8 +57,7 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
     if (evt.which === 27) {
       openScope.focusToggleElement();
       closeDropdown();
-    }
-    else if (openScope.isKeynavEnabled() && /(38|40)/.test(evt.which) && openScope.isOpen) {
+    } else if (openScope.isKeynavEnabled() && /(38|40)/.test(evt.which) && openScope.isOpen) {
       evt.preventDefault();
       evt.stopPropagation();
       openScope.focusDropdownEntry(evt.which);
@@ -75,8 +74,9 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
     setIsOpen = angular.noop,
     toggleInvoker = $attrs.onToggle ? $parse($attrs.onToggle) : angular.noop,
     appendToBody = false,
-    keynavEnabled =false,
-    selectedOption = null;
+    keynavEnabled = false,
+    selectedOption = null,
+    body = $document.find('body');
 
   this.init = function(element) {
     self.$element = element;
@@ -94,7 +94,8 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
     keynavEnabled = angular.isDefined($attrs.keyboardNav);
 
     if (appendToBody && self.dropdownMenu) {
-      $document.find('body').append( self.dropdownMenu );
+      body.append(self.dropdownMenu);
+      body.addClass('dropdown');
       element.on('$destroy', function handleDestroyEvent() {
         self.dropdownMenu.remove();
       });
@@ -144,7 +145,7 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
       }
       case (38): {
         if (!angular.isNumber(self.selectedOption)) {
-          return;
+          self.selectedOption = elems.length - 1;
         } else {
           self.selectedOption = self.selectedOption === 0 ?
             0 : self.selectedOption - 1;
@@ -169,25 +170,27 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
     if (appendToBody && self.dropdownMenu) {
       var pos = $position.positionElements(self.$element, self.dropdownMenu, 'bottom-left', true);
       var css = {
-          top: pos.top + 'px',
-          display: isOpen ? 'block' : 'none'
+        top: pos.top + 'px',
+        display: isOpen ? 'block' : 'none'
       };
 
       var rightalign = self.dropdownMenu.hasClass('dropdown-menu-right');
       if (!rightalign) {
-          css.left = pos.left + 'px';
-          css.right = 'auto';
+        css.left = pos.left + 'px';
+        css.right = 'auto';
       } else {
-          css.left = 'auto';
-          css.right = (window.innerWidth - (pos.left + self.$element.prop('offsetWidth'))) + 'px';
+        css.left = 'auto';
+        css.right = (window.innerWidth - (pos.left + self.$element.prop('offsetWidth'))) + 'px';
       }
 
       self.dropdownMenu.css(css);
     }
 
-    $animate[isOpen ? 'addClass' : 'removeClass'](self.$element, openClass).then(function() {
+    var openContainer = appendToBody ? body : self.$element;
+
+    $animate[isOpen ? 'addClass' : 'removeClass'](openContainer, openClass).then(function() {
       if (angular.isDefined(isOpen) && isOpen !== wasOpen) {
-         toggleInvoker($scope, { open: !!isOpen });
+        toggleInvoker($scope, { open: !!isOpen });
       }
     });
 
@@ -230,9 +233,10 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
     }
   });
 
-  $scope.$on('$destroy', function() {
+  var offDestroy = $scope.$on('$destroy', function() {
     scope.$destroy();
   });
+  scope.$on('$destroy', offDestroy);
 }])
 
 .directive('dropdown', function() {
@@ -288,8 +292,12 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
               break;
             }
             case (38): { // Up
-              dropdownCtrl.selectedOption = dropdownCtrl.selectedOption === 0 ?
-                0 : dropdownCtrl.selectedOption - 1;
+              if (!angular.isNumber(dropdownCtrl.selectedOption)) {
+                dropdownCtrl.selectedOption = elems.length - 1;
+              } else {
+                dropdownCtrl.selectedOption = dropdownCtrl.selectedOption === 0 ?
+                  0 : dropdownCtrl.selectedOption - 1;
+              }
               break;
             }
           }
@@ -297,7 +305,6 @@ angular.module('ui.bootstrap.dropdown', ['ui.bootstrap.position'])
         }
       });
     }
-
   };
 })
 

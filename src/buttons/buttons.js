@@ -18,6 +18,8 @@ angular.module('ui.bootstrap.buttons', [])
     link: function(scope, element, attrs, ctrls) {
       var buttonsCtrl = ctrls[0], ngModelCtrl = ctrls[1];
 
+      element.find('input').css({display: 'none'});
+
       //model -> UI
       ngModelCtrl.$render = function() {
         element.toggleClass(buttonsCtrl.activeClass, angular.equals(ngModelCtrl.$modelValue, scope.$eval(attrs.btnRadio)));
@@ -42,13 +44,15 @@ angular.module('ui.bootstrap.buttons', [])
   };
 })
 
-.directive('btnCheckbox', function() {
+.directive('btnCheckbox', ['$document', function($document) {
   return {
     require: ['btnCheckbox', 'ngModel'],
     controller: 'ButtonsController',
     controllerAs: 'button',
     link: function(scope, element, attrs, ctrls) {
       var buttonsCtrl = ctrls[0], ngModelCtrl = ctrls[1];
+
+      element.find('input').css({display: 'none'});
 
       function getTrueValue() {
         return getCheckboxValue(attrs.btnCheckboxTrue, true);
@@ -79,6 +83,18 @@ angular.module('ui.bootstrap.buttons', [])
           ngModelCtrl.$render();
         });
       });
+
+      //accessibility
+      element.on('keypress', function(e) {
+        if (attrs.disabled || e.which !== 32 || $document[0].activeElement !== element[0]) {
+          return;
+        }
+
+        scope.$apply(function() {
+          ngModelCtrl.$setViewValue(element.hasClass(buttonsCtrl.activeClass) ? getFalseValue() : getTrueValue());
+          ngModelCtrl.$render();
+        });
+      });
     }
   };
-});
+}]);

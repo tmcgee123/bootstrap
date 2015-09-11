@@ -1,12 +1,13 @@
 describe('timepicker directive', function() {
-  var $rootScope, $compile, element;
+  var $rootScope, $compile, $templateCache, element;
 
   beforeEach(module('ui.bootstrap.timepicker'));
   beforeEach(module('template/timepicker/timepicker.html'));
-  beforeEach(inject(function(_$compile_, _$rootScope_) {
+  beforeEach(inject(function(_$compile_, _$rootScope_, _$templateCache_) {
     $compile = _$compile_;
     $rootScope = _$rootScope_;
     $rootScope.time = newTime(14, 40);
+    $templateCache = _$templateCache_;
 
     element = $compile('<timepicker ng-model="time"></timepicker>')($rootScope);
     $rootScope.$digest();
@@ -25,7 +26,7 @@ describe('timepicker directive', function() {
     for (var i = 0; i < 2; i ++) {
       state.push(inputs.eq(i).val());
     }
-    if ( withoutMeridian !== true ) {
+    if (withoutMeridian !== true) {
       state.push(getMeridianButton().text());
     }
     return state;
@@ -676,11 +677,11 @@ describe('timepicker directive', function() {
       $rootScope.$digest();
     }));
 
-    it('displays correctly', function () {
+    it('displays correctly', function() {
       expect(getTimeState()[2]).toBe('pm');
     });
 
-    it('toggles correctly', function () {
+    it('toggles correctly', function() {
       $rootScope.time = newTime(2, 40);
       $rootScope.$digest();
       expect(getTimeState()[2]).toBe('am');
@@ -694,7 +695,7 @@ describe('timepicker directive', function() {
       $rootScope.$digest();
     }));
 
-    it('should make inputs readonly', function () {
+    it('should make inputs readonly', function() {
       var inputs = element.find('input');
       expect(inputs.eq(0).attr('readonly')).toBe('readonly');
       expect(inputs.eq(1).attr('readonly')).toBe('readonly');
@@ -1690,6 +1691,32 @@ describe('timepicker directive', function() {
       expect(getModelState()).toEqual([14, 41]);
       expect(minutesEl.parent().hasClass('has-error')).toBe(false);
       expect(element.hasClass('ng-invalid-time')).toBe(false);
+    });
+  });
+
+  describe('custom template and controllerAs', function() {
+    it('should allow custom templates', function() {
+      $templateCache.put('foo/bar.html', '<div>baz</div>');
+
+      element = $compile('<timepicker ng-model="time" template-url="foo/bar.html"></timepicker>')($rootScope);
+      $rootScope.$digest();
+      expect(element[0].tagName.toLowerCase()).toBe('div');
+      expect(element.html()).toBe('baz');
+    });
+
+    it('should expose the controller on the view', function() {
+      $templateCache.put('template/timepicker/timepicker.html', '<div><div>{{timepicker.text}}</div></div>');
+
+      element = $compile('<timepicker ng-model="time"></timepicker>')($rootScope);
+      $rootScope.$digest();
+
+      var ctrl = element.controller('timepicker');
+      expect(ctrl).toBeDefined();
+
+      ctrl.text = 'foo';
+      $rootScope.$digest();
+
+      expect(element.html()).toBe('<div class="ng-binding">foo</div>');
     });
   });
 });

@@ -5,6 +5,8 @@ angular.module('ui.bootstrap.progressbar', [])
   max: 100
 })
 
+.value('$progressSuppressWarning', false)
+
 .controller('ProgressController', ['$scope', '$attrs', 'progressConfig', function($scope, $attrs, progressConfig) {
   var self = this,
       animate = angular.isDefined($attrs.animate) ? $scope.$parent.$eval($attrs.animate) : progressConfig.animate;
@@ -12,7 +14,7 @@ angular.module('ui.bootstrap.progressbar', [])
   this.bars = [];
   $scope.max = angular.isDefined($scope.max) ? $scope.max : progressConfig.max;
 
-  this.addBar = function(bar, element) {
+  this.addBar = function(bar, element, attrs) {
     if (!animate) {
       element.css({'transition': 'none'});
     }
@@ -20,6 +22,7 @@ angular.module('ui.bootstrap.progressbar', [])
     this.bars.push(bar);
 
     bar.max = $scope.max;
+    bar.title = attrs && angular.isDefined(attrs.title) ? attrs.title : 'progressbar';
 
     bar.$watch('value', function(value) {
       bar.recalculatePercentage();
@@ -28,14 +31,13 @@ angular.module('ui.bootstrap.progressbar', [])
     bar.recalculatePercentage = function() {
       bar.percent = +(100 * bar.value / bar.max).toFixed(2);
 
-      var totalPercentage = 0;
-      self.bars.forEach(function(bar) {
-        totalPercentage += bar.percent;
-      });
+      var totalPercentage = self.bars.reduce(function(total, bar) {
+        return total + bar.percent;
+      }, 0);
 
       if (totalPercentage > 100) {
         bar.percent -= totalPercentage - 100;
-        }
+      }
     };
 
     bar.$on('$destroy', function() {
@@ -56,13 +58,13 @@ angular.module('ui.bootstrap.progressbar', [])
   });
 }])
 
-.directive('progress', function() {
+.directive('uibProgress', function() {
   return {
     restrict: 'EA',
     replace: true,
     transclude: true,
     controller: 'ProgressController',
-    require: 'progress',
+    require: 'uibProgress',
     scope: {
       max: '=?'
     },
@@ -70,7 +72,44 @@ angular.module('ui.bootstrap.progressbar', [])
   };
 })
 
-.directive('bar', function() {
+.directive('progress', ['$log', '$progressSuppressWarning', function($log, $progressSuppressWarning) {
+  return {
+    restrict: 'EA',
+    replace: true,
+    transclude: true,
+    controller: 'ProgressController',
+    require: 'progress',
+    scope: {
+      max: '=?',
+      title: '@?'
+    },
+    templateUrl: 'template/progressbar/progress.html',
+    link: function() {
+      if (!$progressSuppressWarning) {
+        $log.warn('progress is now deprecated. Use uib-progress instead');
+      }
+    }
+  };
+}])
+
+.directive('uibBar', function() {
+  return {
+    restrict: 'EA',
+    replace: true,
+    transclude: true,
+    require: '^uibProgress',
+    scope: {
+      value: '=',
+      type: '@'
+    },
+    templateUrl: 'template/progressbar/bar.html',
+    link: function(scope, element, attrs, progressCtrl) {
+      progressCtrl.addBar(scope, element, attrs);
+    }
+  };
+})
+
+.directive('bar', ['$log', '$progressSuppressWarning', function($log, $progressSuppressWarning) {
   return {
     restrict: 'EA',
     replace: true,
@@ -82,10 +121,13 @@ angular.module('ui.bootstrap.progressbar', [])
     },
     templateUrl: 'template/progressbar/bar.html',
     link: function(scope, element, attrs, progressCtrl) {
+      if (!$progressSuppressWarning) {
+        $log.warn('bar is now deprecated. Use uib-bar instead');
+      }
       progressCtrl.addBar(scope, element);
     }
   };
-})
+}])
 
 .directive('progressbar', function() {
   return {
@@ -100,7 +142,7 @@ angular.module('ui.bootstrap.progressbar', [])
     },
     templateUrl: 'template/progressbar/progressbar.html',
     link: function(scope, element, attrs, progressCtrl) {
-      progressCtrl.addBar(scope, angular.element(element.children()[0]));
+      progressCtrl.addBar(scope, angular.element(element.children()[0]), {title: attrs.title});
     }
   };
 });

@@ -18,7 +18,7 @@ module.exports = function(grunt) {
   grunt.util.linefeed = '\n';
 
   grunt.initConfig({
-    ngversion: '1.4.3',
+    ngversion: '1.4.5',
     bsversion: '3.1.1',
     modules: [],//to be filled in by build task
     pkg: grunt.file.readJSON('package.json'),
@@ -157,10 +157,15 @@ module.exports = function(grunt) {
         reporters: ['progress', 'coverage']
       }
     },
-    changelog: {
+    conventionalChangelog: {
       options: {
-        dest: 'CHANGELOG.md',
+        changelogOpts: {
+          preset: 'angular'
+        },
         templateFile: 'misc/changelog.tpl.md'
+      },
+      release: {
+        src: 'CHANGELOG.md'
       }
     },
     shell: {
@@ -169,7 +174,7 @@ module.exports = function(grunt) {
       'release-prepare': [
         'grunt before-test after-test',
         'grunt version', //remove "-SNAPSHOT"
-        'grunt changelog'
+        'grunt conventionalChangelog'
       ],
       'release-complete': [
         'git commit CHANGELOG.md package.json -m "chore(release): v%version%"',
