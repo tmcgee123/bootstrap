@@ -555,7 +555,7 @@ describe('tooltip', function() {
       elmScope = elm.scope();
       tooltipScope = elmScope.$$childTail;
       expect(tooltipScope.isOpen).toBeFalsy();
-      elm.trigger('mouseenter');
+      trigger(elm, 'mouseenter');
       expect(tooltipScope.isOpen).toBeFalsy();
     }));
   });
