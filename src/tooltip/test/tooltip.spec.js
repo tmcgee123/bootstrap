@@ -385,7 +385,7 @@ describe('tooltip', function() {
       $timeout.flush();
       expect(tooltipScope.isOpen).toBe(false);
     });
-    //
+
     it('should use default popup close delay if specified delay is not a number and close after delay', function() {
       scope.delay = 'text1000';
       scope.$digest();

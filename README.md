@@ -14,7 +14,9 @@
     - [Manual](#manual-download)
 - [Support](#support)
     - [FAQ](#faq)
+    - [PREFIX MIGRATION GUIDE](#prefix-migration-guide)
     - [Supported browsers](#supported-browsers)
+    - [Old Docs](#old-docs)
     - [Need help?](#need-help)
     - [Found a bug?](#found-a-bug)
 - [Contributing to the project](#contributing-to-the-project)
@@ -30,7 +32,7 @@ Do you want to see directives in action? Visit http://angular-ui.github.io/boots
 Installation is easy as UI Bootstrap has minimal dependencies - only the AngularJS and Twitter Bootstrap's CSS are required.
 Note: Since version 0.13.0, UI Bootstrap depends on [ngAnimate](https://docs.angularjs.org/api/ngAnimate) for transitions and animations, such as the accordion, carousel, etc. Include `ngAnimate` in the module dependencies for your app in order to enable animation.
 
-Additionally, it is srongly recommended that for UI Bootstrap 0.13.3 and higher you use Angular 1.3.18 or higher due to animation fixes. 
+Additionally, it is srongly recommended that for UI Bootstrap 0.13.3 and higher you use Angular 1.3.18 or higher due to animation fixes.
 
 #### Install with NPM
 
@@ -86,6 +88,10 @@ angular.module('myModule', [uibs]);
 
 https://github.com/angular-ui/bootstrap/wiki/FAQ
 
+## PREFIX MIGRATION GUIDE
+
+If you're updating your application to use prefixes, please check the [migration guide](https://github.com/angular-ui/bootstrap/wiki/Migration-guide-for-prefixes).
+
 ## Supported browsers
 
 Directives from this repository are automatically tested with the following browsers:
@@ -97,6 +103,9 @@ Directives from this repository are automatically tested with the following brow
 
 Modern mobile browsers should work without problems.
 
+## Old Docs
+
+For the time being, we don't have versioned docs (we are open for a good PR to fix that). If you need to read the old doc, please check the [wiki](https://github.com/angular-ui/bootstrap/wiki/Reading-previous-version-docs).
 
 ## Need help?
 Need help using UI Bootstrap?
